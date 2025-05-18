@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zero-cache.fullname" . }}-view-syncer-headless
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: view-syncer
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.viewSyncer.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "zero-cache.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: view-syncer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zero-cache.fullname" . }}-replication-manager-headless
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: replication-manager
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.replicationManager.service.port }}
+      targetPort: change-stream
+      protocol: TCP
+      name: change-stream
+  selector:
+    {{- include "zero-cache.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: replication-manager

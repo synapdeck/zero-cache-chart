@@ -1,0 +1,86 @@
+# Helm chart specific
+/*.tgz
+/charts/*.tgz
+.helm/
+.cr-release-packages/
+.cr-index/
+
+# Chart dependencies
+/charts/*
+!/charts/.gitkeep
+
+# Testing artifacts
+__snapshot__/
+.unittest/
+
+# Mac OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux files
+*~
+.directory
+.Trash-*
+
+# Editor/IDE files
+.idea/
+.vscode/
+.zed/
+*.swp
+*.swo
+*.swn
+*.sublime-*
+.project
+.settings/
+.classpath
+.factorypath
+
+# Logs and debugging
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.*
+*.env.local
+
+# Node.js dependencies (if using Node.js tools)
+node_modules/
+jspm_packages/
+bower_components/
+package-lock.json
+yarn.lock
+
+# Python artifacts (if using Python tools)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Temporary files
+tmp/
+temp/

@@ -1,0 +1,276 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "zero-cache.fullname" . }}-replication-manager
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: replication-manager
+spec:
+  serviceName: {{ include "zero-cache.fullname" . }}-replication-manager-headless
+  replicas: 1  # Replication manager should always have a single replica
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "zero-cache.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: replication-manager
+  template:
+    metadata:
+      labels:
+        {{- include "zero-cache.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: replication-manager
+      {{- with .Values.replicationManager.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "zero-cache.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | default dict | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | default dict | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: change-stream
+              containerPort: {{ .Values.replicationManager.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /keepalive
+              port: {{ .Values.replicationManager.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.replicationManager.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          env:
+            - name: ZERO_PORT
+              value: "{{ .Values.replicationManager.service.port }}"
+            - name: ZERO_APP_ID
+              value: "{{ .Values.common.appId }}"
+            {{- if .Values.common.appPublications }}
+            - name: ZERO_APP_PUBLICATIONS
+              value: {{ .Values.common.appPublications | join "," | quote }}
+            {{- end }}
+            - name: ZERO_REPLICA_FILE
+              value: "{{ .Values.common.replicaFile }}"
+            - name: ZERO_AUTO_RESET
+              value: "{{ .Values.common.autoReset }}"
+            - name: ZERO_NUM_SYNC_WORKERS
+              value: "0"  # Replication manager should have no sync workers
+            # Auth configuration - only one of these should be set
+            {{- if or .Values.common.auth.secret.value .Values.common.auth.jwksUrl.valueFrom }}
+            - name: ZERO_AUTH_SECRET
+              {{- if .Values.common.auth.secret.value }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zero-cache.fullname" . }}-auth
+                  key: auth-secret
+              {{- else if .Values.common.auth.secret.valueFrom }}
+              valueFrom:
+                {{- if .Values.common.auth.secret.valueFrom.secretKeyRef }}
+                secretKeyRef:
+                  {{- toYaml .Values.common.auth.secret.valueFrom.secretKeyRef | nindent 18 }}
+                {{- else if .Values.common.auth.secret.valueFrom.configMapKeyRef }}
+                configMapKeyRef:
+                  {{- toYaml .Values.common.auth.secret.valueFrom.configMapKeyRef | nindent 18 }}
+                {{- else if .Values.common.auth.secret.valueFrom.fieldRef }}
+                fieldRef:
+                  {{- toYaml .Values.common.auth.secret.valueFrom.fieldRef | nindent 18 }}
+                {{- else if .Values.common.auth.secret.valueFrom.resourceFieldRef }}
+                resourceFieldRef:
+                  {{- toYaml .Values.common.auth.secret.valueFrom.resourceFieldRef | nindent 18 }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- if or .Values.common.auth.jwk.value .Values.common.auth.jwk.valueFrom }}
+            - name: ZERO_AUTH_JWK
+              {{- if .Values.common.auth.jwk.value }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zero-cache.fullname" . }}-auth
+                  key: auth-jwk
+              {{- else if .Values.common.auth.jwk.valueFrom }}
+              valueFrom:
+                {{- if .Values.common.auth.jwk.valueFrom.secretKeyRef }}
+                secretKeyRef:
+                  {{- toYaml .Values.common.auth.jwk.valueFrom.secretKeyRef | nindent 18 }}
+                {{- else if .Values.common.auth.jwk.valueFrom.configMapKeyRef }}
+                configMapKeyRef:
+                  {{- toYaml .Values.common.auth.jwk.valueFrom.configMapKeyRef | nindent 18 }}
+                {{- else if .Values.common.auth.jwk.valueFrom.fieldRef }}
+                fieldRef:
+                  {{- toYaml .Values.common.auth.jwk.valueFrom.fieldRef | nindent 18 }}
+                {{- else if .Values.common.auth.jwk.valueFrom.resourceFieldRef }}
+                resourceFieldRef:
+                  {{- toYaml .Values.common.auth.jwk.valueFrom.resourceFieldRef | nindent 18 }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- if or .Values.common.auth.jwksUrl.value .Values.common.auth.jwksUrl.valueFrom }}
+            - name: ZERO_AUTH_JWKS_URL
+              {{- if .Values.common.auth.jwksUrl.value }}
+              value: "{{ .Values.common.auth.jwksUrl.value }}"
+              {{- else if .Values.common.auth.jwksUrl.valueFrom }}
+              valueFrom:
+                {{- if .Values.common.auth.jwksUrl.valueFrom.secretKeyRef }}
+                secretKeyRef:
+                  {{- toYaml .Values.common.auth.jwksUrl.valueFrom.secretKeyRef | nindent 18 }}
+                {{- else if .Values.common.auth.jwksUrl.valueFrom.configMapKeyRef }}
+                configMapKeyRef:
+                  {{- toYaml .Values.common.auth.jwksUrl.valueFrom.configMapKeyRef | nindent 18 }}
+                {{- else if .Values.common.auth.jwksUrl.valueFrom.fieldRef }}
+                fieldRef:
+                  {{- toYaml .Values.common.auth.jwksUrl.valueFrom.fieldRef | nindent 18 }}
+                {{- else if .Values.common.auth.jwksUrl.valueFrom.resourceFieldRef }}
+                resourceFieldRef:
+                  {{- toYaml .Values.common.auth.jwksUrl.valueFrom.resourceFieldRef | nindent 18 }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            # Admin password if specified
+            {{- if .Values.common.adminPassword }}
+            - name: ZERO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zero-cache.fullname" . }}-admin
+                  key: admin-password
+            {{- end }}
+            # Database connection strings
+            - name: ZERO_UPSTREAM_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zero-cache.fullname" . }}-db
+                  key: upstream-db
+            - name: ZERO_UPSTREAM_MAX_CONNS
+              value: "{{ .Values.common.database.upstreamMaxConns }}"
+            {{- if .Values.common.database.cvrDb }}
+            - name: ZERO_CVR_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zero-cache.fullname" . }}-db
+                  key: cvr-db
+            {{- end }}
+            - name: ZERO_CVR_MAX_CONNS
+              value: "{{ .Values.common.database.cvrMaxConns }}"
+            {{- if .Values.common.database.changeDb }}
+            - name: ZERO_CHANGE_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zero-cache.fullname" . }}-db
+                  key: change-db
+            {{- end }}
+            - name: ZERO_CHANGE_MAX_CONNS
+              value: "{{ .Values.common.database.changeMaxConns }}"
+            # Litestream configuration
+            {{- if .Values.common.litestream.backupUrl }}
+            - name: ZERO_LITESTREAM_BACKUP_URL
+              value: "{{ .Values.common.litestream.backupUrl }}"
+            {{- if .Values.s3.enabled }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zero-cache.fullname" . }}-s3
+                  key: access-key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zero-cache.fullname" . }}-s3
+                  key: secret-key
+            - name: AWS_REGION
+              value: "{{ .Values.s3.region }}"
+            {{- if .Values.s3.endpoint }}
+            - name: AWS_ENDPOINT_URL
+              value: "{{ .Values.s3.endpoint }}"
+            {{- end }}
+            {{- end }}
+            - name: ZERO_LITESTREAM_CHECKPOINT_THRESHOLD_MB
+              value: "{{ .Values.common.litestream.checkpointThresholdMb }}"
+            - name: ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES
+              value: "{{ .Values.common.litestream.incrementalBackupIntervalMinutes }}"
+            - name: ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_HOURS
+              value: "{{ .Values.common.litestream.snapshotBackupIntervalHours }}"
+            - name: ZERO_LITESTREAM_RESTORE_PARALLELISM
+              value: "{{ .Values.common.litestream.restoreParallelism }}"
+            - name: ZERO_LITESTREAM_LOG_LEVEL
+              value: "{{ .Values.common.litestream.logLevel }}"
+            {{- end }}
+            # Performance configuration
+            {{- if .Values.common.performance.replicaVacuumIntervalHours }}
+            - name: ZERO_REPLICA_VACUUM_INTERVAL_HOURS
+              value: "{{ .Values.common.performance.replicaVacuumIntervalHours }}"
+            {{- end }}
+            - name: ZERO_INITIAL_SYNC_ROW_BATCH_SIZE
+              value: "{{ .Values.common.performance.initialSyncRowBatchSize }}"
+            - name: ZERO_INITIAL_SYNC_TABLE_COPY_WORKERS
+              value: "{{ .Values.common.performance.initialSyncTableCopyWorkers }}"
+            - name: ZERO_TARGET_CLIENT_ROW_COUNT
+              value: "{{ .Values.common.performance.targetClientRowCount }}"
+            # Logging configuration
+            - name: ZERO_LOG_FORMAT
+              value: "{{ .Values.common.logging.format }}"
+            - name: ZERO_LOG_LEVEL
+              value: "{{ .Values.common.logging.level }}"
+            - name: ZERO_LOG_SLOW_HYDRATE_THRESHOLD
+              value: "{{ .Values.common.logging.slowHydrateThreshold }}"
+            - name: ZERO_LOG_SLOW_ROW_THRESHOLD
+              value: "{{ .Values.common.logging.slowRowThreshold }}"
+            - name: ZERO_LOG_IVM_SAMPLING
+              value: "{{ .Values.common.logging.ivmSampling }}"
+            {{- if .Values.common.logging.traceCollector }}
+            - name: ZERO_LOG_TRACE_COLLECTOR
+              value: "{{ .Values.common.logging.traceCollector }}"
+            {{- end }}
+            # Rate limiting
+            {{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
+            - name: ZERO_PER_USER_MUTATION_LIMIT_MAX
+              value: "{{ .Values.common.rateLimiting.perUserMutationLimitMax }}"
+            {{- end }}
+            - name: ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS
+              value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"
+            # Custom mutations
+            {{- if .Values.common.customMutators.pushUrl }}
+            - name: ZERO_PUSH_URL
+              value: "{{ .Values.common.customMutators.pushUrl }}"
+            {{- end }}
+          resources:
+            {{- toYaml .Values.replicationManager.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- with .Values.replicationManager.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.replicationManager.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.replicationManager.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.replicationManager.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - {{ .Values.replicationManager.persistence.accessMode }}
+        {{- if .Values.replicationManager.persistence.storageClass }}
+        storageClassName: {{ .Values.replicationManager.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.replicationManager.persistence.size }}
+  {{- end }}
