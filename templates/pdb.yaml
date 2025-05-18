@@ -1,0 +1,21 @@
+{{- if .Values.replicationManager.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "zero-cache.fullname" . }}-replication-manager
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: replication-manager
+spec:
+  {{- if .Values.replicationManager.pdb.minAvailable }}
+  minAvailable: {{ .Values.replicationManager.pdb.minAvailable }}
+  {{- else if .Values.replicationManager.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.replicationManager.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zero-cache.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: replication-manager
+{{- end }}

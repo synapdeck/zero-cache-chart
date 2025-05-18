@@ -1,0 +1,18 @@
+apiVersion: v2
+name: zero-cache
+description: A Helm chart for deploying zero-cache, a horizontally scalable service that maintains a SQLite replica of your Postgres database for Zero
+type: application
+version: 0.20.2025051800
+appVersion: "0.20.2025051800"
+maintainers:
+  - name: Alexis Williams
+    email: alexis@synapdeck.com
+keywords:
+  - zero
+  - zero-cache
+  - postgres
+  - replication
+  - sqlite
+home: https://zero.rocicorp.dev/
+sources:
+  - https://github.com/rocicorp/zero

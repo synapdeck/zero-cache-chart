@@ -1,0 +1,59 @@
+Thank you for installing {{ .Chart.Name }} chart, version {{ .Chart.Version }}!
+
+Your zero-cache deployment consists of:
+- 1 replication-manager node (exactly 1 replica as per Zero architecture)
+- {{ .Values.viewSyncer.replicas }} view-syncer node(s) (horizontally scalable)
+
+DEPLOYMENT STATUS:
+You can check the status of your deployment with:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+CONNECTION INFORMATION:
+{{- if .Values.viewSyncer.ingress.enabled }}
+Your zero-cache is available at:
+{{- range $host := .Values.viewSyncer.ingress.hosts }}
+  http{{ if $.Values.viewSyncer.ingress.tls }}s{{ end }}://{{ $host.host }}
+{{- end }}
+{{- else }}
+Your zero-cache service is available internally at:
+  {{ include "zero-cache.fullname" . }}-view-syncer.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.viewSyncer.service.port }}
+
+To access it from outside the cluster, you can set up port-forwarding:
+  kubectl port-forward svc/{{ include "zero-cache.fullname" . }}-view-syncer {{ .Values.viewSyncer.service.port }}:{{ .Values.viewSyncer.service.port }}
+Then access: http://localhost:{{ .Values.viewSyncer.service.port }}
+{{- end }}
+
+FRONTEND CONFIGURATION:
+Connect your Zero frontend to this server by setting the server parameter:
+
+const zero = new Zero({
+  server: "<YOUR_SERVER_URL>",
+  auth: "<YOUR_JWT_TOKEN>", // or specify jwk/jwksUrl if using those auth methods
+  userID: "<USER_ID>" // should match 'sub' field in JWT
+});
+
+HEALTH CHECK:
+To verify the server is working properly:
+  curl http://SERVER_URL/
+
+REPLICATION STATUS:
+To check the replication manager:
+  kubectl logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=replication-manager
+
+VIEW SYNCER STATUS:
+To check view syncer pods:
+  kubectl logs statefulset/{{ include "zero-cache.fullname" . }}-view-syncer
+
+TROUBLESHOOTING:
+1. If connections fail, verify your Postgres connection string and that logical replication is enabled.
+2. If your Postgres server is new, ensure the required databases and schemas exist.
+3. For authentication issues, check that your auth secret or JWT configuration is correct.
+4. For persistence issues, check the persistent volume claims:
+   kubectl get pvc -l app.kubernetes.io/instance={{ .Release.Name }}
+
+DOCUMENTATION:
+For more information, visit: https://zero.rocicorp.dev/docs/deployment
+
+PERMISSIONS DEPLOYMENT:
+Remember to deploy permissions whenever they change:
+  npx zero-deploy-permissions --schema-path='./path/to/schema.ts'

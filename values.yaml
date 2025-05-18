@@ -1,0 +1,325 @@
+# Default values for zero-cache helm chart
+# For more details, see: https://zero.rocicorp.dev/docs/deployment
+
+## Common Configuration
+image:
+  # Official Zero image from Rocicorp
+  repository: docker.io/rocicorp/zero
+  # Will default to the appVersion from Chart.yaml if not overridden
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Common environment variables shared between components
+common:
+  # Application identifier
+  appId: zero
+  # If specified, will create publications for tables in these schemas
+  appPublications: []
+  # Required: Path to the SQLite replica file
+  replicaFile: /data/sync-replica.db
+  # Automatically reset and resync when replication is halted
+  autoReset: true
+  # Auth configuration (one of secret, jwk, or jwksUrl MUST be provided)
+  auth:
+    # Secret for JWT authentication using symmetric keys
+    secret:
+      {}
+      # Direct value for the secret
+      # value: ""
+      # Or, reference a value from a configMap, secret, etc.
+      # valueFrom:
+      #   secretKeyRef:
+      #     name: my-secret
+      #     key: auth-secret
+      #     optional: false
+      #   # or configMapKeyRef, fieldRef, resourceFieldRef
+
+    # Public key in JWK format for asymmetric JWT verification
+    jwk:
+      {}
+      # Direct value for the JWK
+      # value: ""
+      # Or, reference a value from a configMap, secret, etc.
+      # valueFrom:
+      #   secretKeyRef:
+      #     name: my-secret
+      #     key: auth-jwk
+      #     optional: false
+      #   # or configMapKeyRef, fieldRef, resourceFieldRef
+    # URL that returns a JWK set (often provided by auth services like Auth0, Cognito)
+    jwksUrl:
+      {}
+      # Direct value for the JWKS URL
+      # value: ""
+      # Or, reference a value from a configMap, secret, etc.
+      # valueFrom:
+      #   configMapKeyRef:
+      #     name: my-config
+      #     key: jwks-url
+      #     optional: false
+      #   # or secretKeyRef, fieldRef, resourceFieldRef
+
+  # Admin password for management endpoints
+  adminPassword: ""
+
+  # Database configuration
+  database:
+    # Required: Upstream Postgres database connection string
+    upstreamDb: ""
+    # Max connections to upstream database
+    upstreamMaxConns: 20
+    # CVR database connection string (defaults to upstreamDb if not set)
+    cvrDb: ""
+    # Max connections to CVR database
+    cvrMaxConns: 30
+    # Change database connection string (defaults to upstreamDb if not set)
+    changeDb: ""
+    # Max connections to change database
+    changeMaxConns: 5
+
+  # Litestream configuration for SQLite replication
+  litestream:
+    # S3-compatible backup URL (e.g., s3://bucket-name/backup)
+    backupUrl: ""
+    # Size threshold for checkpointing (MB)
+    checkpointThresholdMb: 40
+    # Interval between incremental backups (minutes)
+    incrementalBackupIntervalMinutes: 15
+    # Interval between snapshot backups (hours)
+    snapshotBackupIntervalHours: 12
+    # Parallelism for restore operations
+    restoreParallelism: 48
+    # Log level for litestream
+    logLevel: warn
+
+  # Performance tuning
+  performance:
+    # Interval for SQLite VACUUM operation (hours, unset = no vacuum)
+    replicaVacuumIntervalHours: null
+    # Batch size for initial sync operations
+    initialSyncRowBatchSize: 10000
+    # Workers for table copying during initial sync
+    initialSyncTableCopyWorkers: 5
+    # Target row count to keep on the client
+    targetClientRowCount: 20000
+
+  # Logging configuration
+  logging:
+    # Log format: text or json
+    format: text
+    # Log level: debug, info, warn, error
+    level: info
+    # Slow query thresholds
+    slowHydrateThreshold: 100
+    slowRowThreshold: 2
+    # IVM sampling rate (1 in N requests)
+    ivmSampling: 5000
+    # OpenTelemetry trace collector URL
+    traceCollector: ""
+
+  # Rate limiting
+  rateLimiting:
+    # Maximum mutations per user
+    perUserMutationLimitMax: null
+    # Window for mutation rate limiting (ms)
+    perUserMutationLimitWindowMs: 60000
+
+  # Custom mutator settings
+  customMutators:
+    # URL for pushing custom mutations to your server
+    # Required if you use custom mutators: https://zero.rocicorp.dev/docs/custom-mutators
+    pushUrl: ""
+
+## Replication Manager Configuration
+replicationManager:
+  # Replica components will find the replication manager by this service name
+  serviceName: zero-cache-replication-manager
+
+  # The replication manager should ALWAYS have exactly 1 replica
+  # This is a requirement of Zero architecture - do not change this value
+  replicas: 1
+
+  # Sync workers should be 0 for the replication manager
+  # This is a requirement of Zero architecture - do not change this value
+  numSyncWorkers: 0
+
+  # Resource requests and limits
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+  # Persistent storage for SQLite replica
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    storageClass: null
+    annotations: {}
+    allowVolumeExpansion: true
+    retainPolicy: "Delete" # Options: Delete, Retain
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 4849
+    annotations: {}
+
+  # Pod annotations
+  podAnnotations: {}
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity settings
+  affinity: {}
+
+  # Startup probe for slow-starting instances
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+
+## View Syncer Configuration
+viewSyncer:
+  # Number of replicas (horizontally scalable)
+  # Set this to at least 2 for high availability
+  # Note: If autoscaling.enabled=true, this becomes the initial number of replicas
+  replicas: 2
+
+  # Resource requests and limits
+  resources:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
+
+  # Autoscaling configuration
+  autoscaling:
+    # When enabled, replicas field becomes the initial/minimum replica count
+    enabled: false
+    # Minimum number of replicas for the HPA
+    minReplicas: 2
+    # Maximum number of replicas for the HPA
+    maxReplicas: 10
+    # Target CPU threshold for scaling
+    targetCPUUtilizationPercentage: 80
+    # Target memory threshold for scaling
+    targetMemoryUtilizationPercentage: 80
+
+  # Persistent storage for SQLite replica
+  # Each view-syncer pod gets its own PVC via StatefulSet volumeClaimTemplates
+  # If disabled, pods will use ephemeral storage and re-sync from S3 on restart (if configured)
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    storageClass: null
+    annotations: {}
+    allowVolumeExpansion: true
+    retainPolicy: "Delete" # Options: Delete, Retain
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    # Default Zero port - align with zero-cache-config port setting
+    port: 4848
+    # Additional service annotations
+    # Note: Client IP session affinity is automatically added for better performance
+    annotations: {}
+
+  # Create an Ingress resource
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: zero-cache.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  # Pod annotations
+  podAnnotations: {}
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity settings
+  affinity: {}
+
+  # Pod Disruption Budget
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+  # Startup probe for slow-starting instances
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+
+## S3-compatible Storage Configuration
+s3:
+  # Enable S3 backup with Litestream (strongly recommended for production)
+  enabled: false
+  # Access credentials for S3
+  accessKey: ""
+  secretKey: ""
+  # Region setting for S3
+  region: us-east-1
+  # For S3-compatible storage providers (MinIO, DigitalOcean Spaces, etc.)
+  # Leave empty for AWS S3
+  endpoint: ""
+  # Bucket configuration
+  # Must be created before deployment
+  bucketName: "zero-cache-backup"
+  # Path within bucket for backups
+  path: "backup"
+  # Support for external secret providers
+  existingSecret: ""
+  secretKeys:
+    accessKey: "access-key"
+    secretKey: "secret-key"
+
+## Security Context Configuration
+# Security best practices for containers
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+## Service Account Configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: true

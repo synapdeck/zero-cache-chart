@@ -1,0 +1,33 @@
+{{- if .Values.viewSyncer.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "zero-cache.fullname" . }}-view-syncer
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: view-syncer
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: {{ include "zero-cache.fullname" . }}-view-syncer
+  minReplicas: {{ .Values.viewSyncer.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.viewSyncer.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.viewSyncer.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.viewSyncer.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.viewSyncer.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.viewSyncer.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

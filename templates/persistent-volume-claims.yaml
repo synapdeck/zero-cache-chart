@@ -1,0 +1,61 @@
+---
+# PVC for replication-manager (will only be used if replicationManager.persistence.enabled is true)
+{{- if .Values.replicationManager.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "zero-cache.fullname" . }}-replication-manager
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: replication-manager
+  annotations:
+    {{- with .Values.replicationManager.persistence.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.replicationManager.persistence.retainPolicy }}
+    "helm.sh/resource-policy": {{ .Values.replicationManager.persistence.retainPolicy | quote }}
+    {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.replicationManager.persistence.accessMode }}
+  {{- if .Values.replicationManager.persistence.storageClass }}
+  storageClassName: {{ .Values.replicationManager.persistence.storageClass }}
+  {{- end }}
+  {{- if .Values.replicationManager.persistence.allowVolumeExpansion }}
+  volumeMode: Filesystem
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.replicationManager.persistence.size }}
+{{- end }}
+
+---
+# PVC for view-syncer (will only be used if viewSyncer.persistence.enabled is true)
+{{- if and .Values.viewSyncer.persistence.enabled (not .Values.viewSyncer.persistence.useVolumeClaimTemplates) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "zero-cache.fullname" . }}-view-syncer
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: view-syncer
+  annotations:
+    {{- with .Values.viewSyncer.persistence.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.viewSyncer.persistence.retainPolicy }}
+    "helm.sh/resource-policy": {{ .Values.viewSyncer.persistence.retainPolicy | quote }}
+    {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.viewSyncer.persistence.accessMode }}
+  {{- if .Values.viewSyncer.persistence.storageClass }}
+  storageClassName: {{ .Values.viewSyncer.persistence.storageClass }}
+  {{- end }}
+  {{- if .Values.viewSyncer.persistence.allowVolumeExpansion }}
+  volumeMode: Filesystem
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.viewSyncer.persistence.size }}
+{{- end }}

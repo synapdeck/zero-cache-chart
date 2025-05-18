@@ -1,0 +1,54 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    ":semanticCommits"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["rocicorp/zero"],
+      "extractVersion": "^v(?<version>.*)$",
+      "allowedVersions": "/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-(0|[1-9]\\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(\\.([0-9]\\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$/",
+      "updateTypes": ["major", "minor", "patch"],
+      "semanticCommitType": "fix",
+      "semanticCommitScope": "deps",
+      "separateMinorPatch": true,
+      "commitMessageTopic": "Docker image {{depName}}",
+      "recreateClosed": true,
+      "automerge": true,
+      "automergeType": "pr",
+      "ignoreTests": false,
+      "fileMatch": ["^values\\.yaml$"]
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["rocicorp/zero"],
+      "updateTypes": ["major", "minor", "patch"],
+      "matchFiles": ["Chart.yaml"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "chart",
+      "commitMessageTopic": "Helm chart appVersion"
+    }
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": ["^values\\.yaml$"],
+      "matchStrings": [
+        "(?<depName>rocicorp\\/zero):\\s*(?<currentValue>.*)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "fileMatch": ["^Chart\\.yaml$"],
+      "matchStrings": [
+        "appVersion:\\s*\\\"(?<currentValue>.*)\\\"\\s*"
+      ],
+      "depNameTemplate": "rocicorp/zero",
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "assignees": [],
+  "reviewers": [],
+  "labels": ["dependencies"]
+}
