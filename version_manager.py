@@ -340,7 +340,7 @@ def package_and_push_to_oci(oci_registry: str, oci_repo: str) -> bool:
         run_command("rm -f zero-cache-*.tgz", check=False)
 
         # Package the chart
-        package_result = run_command("helm package ./zero-cache", check=False)
+        package_result = run_command("helm package .", check=False)
         if "Error" in package_result:
             print(f"Error packaging Helm chart: {package_result}")
             return False
@@ -759,6 +759,7 @@ def run_version_management(
             "updated_branches": [],
             "created_tags": [],
             "pushed_oci_packages": [],
+            "current_version": str(current_version) if current_version else None,
         }
 
         # Process branch management if enabled
@@ -773,16 +774,22 @@ def run_version_management(
                 results,
             )
 
+            # Get updated current version after branch management
+            updated_current_version, _ = get_current_version(chart_path)
+        else:
+            # If not managing branches, use the initially detected version
+            updated_current_version = current_version
+
         # Process tag management if enabled
         if manage_tags:
             results = _handle_tag_management(
-                dry_run, all_versions, version_map, results
+                dry_run, all_versions, version_map, results, updated_current_version
             )
 
         # Process OCI package management if enabled
         if manage_oci and oci_registry and oci_repo:
             results = _handle_oci_management(
-                dry_run, all_versions, version_map, oci_registry, oci_repo, results
+                dry_run, all_versions, version_map, oci_registry, oci_repo, results, updated_current_version
             )
 
         # Print summary of operations
@@ -860,6 +867,7 @@ def _handle_tag_management(
     all_versions: List[Version],
     version_map: Dict[str, Version],
     results: Dict[str, Any],
+    current_version: Optional[Version] = None,
 ) -> Dict[str, Any]:
     """Helper function to manage tags"""
     if dry_run:
@@ -869,6 +877,17 @@ def _handle_tag_management(
         # Create tags for all versions
         created_tags = create_version_tags(all_versions, version_map)
         results["created_tags"] = created_tags
+
+        # Check if current version has a tag
+        if current_version:
+            version_str = str(current_version)
+            if version_str not in results["created_tags"]:
+                print(f"Checking if tag exists for current version: {version_str}")
+                tag_check = run_command(f"git tag -l v{version_str}", check=False).strip()
+                if not tag_check:
+                    print(f"Creating tag for current version: {version_str}")
+                    create_tag(version_str)
+                    results["created_tags"].append(version_str)
 
     return results
 
@@ -880,6 +899,7 @@ def _handle_oci_management(
     oci_registry: str,
     oci_repo: str,
     results: Dict[str, Any],
+    current_version: Optional[Version] = None,
 ) -> Dict[str, Any]:
     """Helper function to manage OCI packages"""
     if dry_run:
@@ -892,6 +912,23 @@ def _handle_oci_management(
         )
         results["pushed_oci_packages"] = pushed_packages
 
+        # Check if current version has an OCI package
+        if current_version:
+            version_str = str(current_version)
+            if version_str not in results["pushed_oci_packages"]:
+                print(f"Checking if OCI package exists for current version: {version_str}")
+                # Push package for current version if not already pushed
+                if version_str in version_map:
+                    print(f"Pushing OCI package for current version: {version_str}")
+                    # Need to update Chart.yaml with this version before packaging
+                    current_chart_path = Path("./Chart.yaml")
+                    if update_chart_version(current_chart_path, version_str, commit=False):
+                        success = package_and_push_to_oci(oci_registry, oci_repo)
+                    else:
+                        success = False
+                    if success:
+                        results["pushed_oci_packages"].append(version_str)
+
     return results
 
 
@@ -903,6 +940,8 @@ def _print_summary(
 ) -> None:
     """Print summary of operations performed"""
     print("\n=== SUMMARY ===")
+    if results.get("current_version"):
+        print(f"Current version: {results['current_version']}")
     if manage_branches:
         print("Branch management:")
         print(f"  - Main branch updated: {results['main_updated']}")
@@ -917,15 +956,31 @@ def _print_summary(
         print("Tag management:")
         if results["created_tags"]:
             print(f"  - Created tags: {', '.join(results['created_tags'])}")
+            if results.get("current_version") and results["current_version"] in results["created_tags"]:
+                print(f"  - Current version {results['current_version']} has tag")
         else:
             print("  - No new tags created, all tags already exist")
+
+        # Check if current version has a tag even if we didn't create one
+        if results.get("current_version") and results["current_version"] not in results["created_tags"]:
+            tag_exists = run_command(f"git tag -l v{results['current_version']}", check=False).strip()
+            if tag_exists:
+                print(f"  - Current version {results['current_version']} already has tag")
+            else:
+                print(f"  - Current version {results['current_version']} does not have tag")
 
     if manage_oci:
         print("OCI package management:")
         if results["pushed_oci_packages"]:
             print(f"  - Pushed packages: {', '.join(results['pushed_oci_packages'])}")
+            if results.get("current_version") and results["current_version"] in results["pushed_oci_packages"]:
+                print(f"  - Current version {results['current_version']} has OCI package")
         else:
             print("  - No new packages pushed to OCI registry")
+
+        # Note if current version has an OCI package even if we didn't push one
+        if results.get("current_version") and results["current_version"] not in results["pushed_oci_packages"]:
+            print(f"  - Current version {results['current_version']} may not have OCI package")
 
 
 def main(
