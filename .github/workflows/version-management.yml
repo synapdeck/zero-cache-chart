@@ -5,13 +5,6 @@ on:
     - cron: "0 * * * *" # Run every hour
   workflow_dispatch: # Allow manual triggering
 
-env:
-  DOCKER_IMAGE: rocicorp/zero
-  CHART_PATH: Chart.yaml
-  VALUES_PATH: values.yaml
-  OCI_REGISTRY: ghcr.io
-  OCI_REPO: ${{ github.repository_owner }}/zero-cache/zero-cache
-
 jobs:
   check-and-update-versions:
     runs-on: ubuntu-latest
@@ -31,199 +24,35 @@ jobs:
         with:
           version: "latest"
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.5"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          registry: ${{ env.OCI_REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-          
-      - name: Set write permissions for GitHub Actions token
-        run: |
-          echo "GITHUB_TOKEN=${{ github.token }}" >> $GITHUB_ENV
 
-      - name: Get current version from Chart.yaml
-        id: current-version
-        run: |
-          CURRENT_VERSION=$(grep "appVersion:" ${{ env.CHART_PATH }} | cut -d '"' -f 2)
-          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          CURRENT_MAJOR_MINOR=$(echo $CURRENT_VERSION | grep -Eo "^[0-9]+\.[0-9]+")
-          echo "current_major_minor=$CURRENT_MAJOR_MINOR" >> $GITHUB_OUTPUT
-
-      - name: Fetch all Docker image versions
-        id: docker-versions
-        run: |
-          # Get versions from Docker Hub
-          ALL_VERSIONS=$(curl -s "https://hub.docker.com/v2/repositories/${{ env.DOCKER_IMAGE }}/tags/?page_size=100" | \
-                        jq -r '.results[] | select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .name' | \
-                        sort -V)
-
-          # Find latest version
-          LATEST_VERSION=$(echo "$ALL_VERSIONS" | tail -n 1)
-          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
-
-          # Extract major.minor from latest version
-          LATEST_MAJOR_MINOR=$(echo $LATEST_VERSION | grep -Eo "^[0-9]+\.[0-9]+")
-          echo "latest_major_minor=$LATEST_MAJOR_MINOR" >> $GITHUB_OUTPUT
-
-          # Get all major.minor versions
-          MAJOR_MINOR_VERSIONS=$(echo "$ALL_VERSIONS" | grep -Eo "^[0-9]+\.[0-9]+" | sort -V | uniq)
-          echo "all_major_minor=$(echo $MAJOR_MINOR_VERSIONS | tr ' ' ',')" >> $GITHUB_OUTPUT
-
-          # Create a JSON with latest version for each major.minor
-          echo "{" > versions.json
-          for MM in $MAJOR_MINOR_VERSIONS; do
-            LATEST_FOR_MM=$(echo "$ALL_VERSIONS" | grep "^$MM\." | tail -n 1)
-            echo "\"$MM\": \"$LATEST_FOR_MM\"," >> versions.json
-          done
-          # Remove trailing comma and close JSON object
-          sed -i '$ s/,$//' versions.json
-          echo "}" >> versions.json
-          
-          # Store JSON in output variable
-          VERSIONS_JSON=$(cat versions.json | tr -d '\n')
-          echo "versions_json<<EOF" >> $GITHUB_OUTPUT
-          echo "$VERSIONS_JSON" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Update main branch if needed
-        if: steps.current-version.outputs.current_version != steps.docker-versions.outputs.latest_version
-        run: |
-          # Checkout main
-          git checkout main
-
-          # Update Chart.yaml
-          sed -i 's/appVersion: ".*"/appVersion: "${{ steps.docker-versions.outputs.latest_version }}"/g' ${{ env.CHART_PATH }}
-
-          # Commit and push directly
-          git add ${{ env.CHART_PATH }}
-          git commit -m "chore(chart): update Helm chart appVersion and version to ${{ steps.docker-versions.outputs.latest_version }}"
-          git push origin main
-
-          # Update chart version in Chart.yaml to match appVersion
-          CHART_VERSION=$(grep "version:" ${{ env.CHART_PATH }} | awk '{print $2}')
-          sed -i "s/version: $CHART_VERSION/version: ${{ steps.docker-versions.outputs.latest_version }}/g" ${{ env.CHART_PATH }}
-          
-          # Commit the version change
-          git add ${{ env.CHART_PATH }}
-          git commit -m "chore(chart): update chart version to ${{ steps.docker-versions.outputs.latest_version }}"
-          git push origin main
-          
-          # Create version tag
-          git tag "v${{ steps.docker-versions.outputs.latest_version }}"
-          git push origin "v${{ steps.docker-versions.outputs.latest_version }}"
-          
-          # Package and push chart to OCI registry
-          helm package ./zero-cache
-          CHART_PACKAGE=$(ls zero-cache-*.tgz)
-          helm push $CHART_PACKAGE oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPO }}
-
-          echo "Updated main branch to version ${{ steps.docker-versions.outputs.latest_version }}, created tag, and pushed to OCI registry"
+      - name: Manage Docker Image Versions and Helm Chart
         env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Create branch for new major.minor version if needed
-        if: steps.docker-versions.outputs.latest_major_minor != steps.current-version.outputs.current_major_minor
-        env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          NEW_MM="${{ steps.docker-versions.outputs.latest_major_minor }}"
-          NEW_VERSION="${{ steps.docker-versions.outputs.latest_version }}"
-
-          # Check if a branch for this major.minor version already exists
-          if ! git ls-remote --heads origin "v$NEW_MM"; then
-            echo "Creating new version branch v$NEW_MM"
-            git checkout main
-            git checkout -b "v$NEW_MM"
-
-            # Update Chart.yaml to use the latest version for this major.minor
-            sed -i 's/appVersion: ".*"/appVersion: "'$NEW_VERSION'"/g' ${{ env.CHART_PATH }}
-
-            # Commit and push
-            git add ${{ env.CHART_PATH }}
-            git commit -m "chore(chart): initialize v$NEW_MM branch with appVersion and version $NEW_VERSION"
-            git push origin "v$NEW_MM"
-
-            # Update chart version in Chart.yaml to match appVersion
-            CHART_VERSION=$(grep "version:" ${{ env.CHART_PATH }} | awk '{print $2}')
-            sed -i "s/version: $CHART_VERSION/version: $NEW_VERSION/g" ${{ env.CHART_PATH }}
-            
-            # Commit the version change
-            git add ${{ env.CHART_PATH }}
-            git commit -m "chore(chart): update chart version to $NEW_VERSION"
-            git push origin "v$NEW_MM"
-            
-            # Create version tag for this branch as well
-            git tag "v$NEW_MM/$NEW_VERSION"
-            git push origin "v$NEW_MM/$NEW_VERSION"
-            
-            # Package and push chart to OCI registry with branch-specific tag
-            helm package ./zero-cache
-            CHART_PACKAGE=$(ls zero-cache-*.tgz)
-            helm push $CHART_PACKAGE oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPO }}
-
-            echo "Created version branch v$NEW_MM with tag v$NEW_MM/$NEW_VERSION and pushed to OCI registry"
-          fi
-
-      - name: Update existing version branches
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Get all version branches
-          git fetch origin
-          VERSION_BRANCHES=$(git branch -r | grep "origin/v[0-9]\+\.[0-9]\+" | sed 's/origin\///')
-
-          # Parse versions JSON
-          VERSIONS_JSON='${{ steps.docker-versions.outputs.versions_json }}'
-
-          for BRANCH in $VERSION_BRANCHES; do
-            # Extract major.minor from branch name
-            BRANCH_MM=$(echo $BRANCH | grep -Eo "[0-9]+\.[0-9]+")
-
-            # Get latest version for this major.minor
-            LATEST_FOR_MM=$(echo "$VERSIONS_JSON" | jq -r --arg mm "$BRANCH_MM" '.[$mm]')
-
-            if [ "$LATEST_FOR_MM" = "null" ] || [ -z "$LATEST_FOR_MM" ]; then
-              echo "No version found for $BRANCH_MM, skipping"
-              continue
-            fi
-
-            # Get current version in branch
-            git checkout $BRANCH
-            CURRENT_VERSION=$(grep "appVersion:" ${{ env.CHART_PATH }} | cut -d '"' -f 2)
-
-            if [ "$LATEST_FOR_MM" != "$CURRENT_VERSION" ]; then
-              echo "Updating $BRANCH from $CURRENT_VERSION to $LATEST_FOR_MM"
-
-              # Update Chart.yaml
-              sed -i 's/appVersion: ".*"/appVersion: "'$LATEST_FOR_MM'"/g' ${{ env.CHART_PATH }}
-
-              # Commit and push directly to branch
-              git add ${{ env.CHART_PATH }}
-              git commit -m "chore(chart): update Helm chart appVersion and version to $LATEST_FOR_MM"
-              git push origin $BRANCH
-
-              # Update chart version in Chart.yaml to match appVersion
-              CHART_VERSION=$(grep "version:" ${{ env.CHART_PATH }} | awk '{print $2}')
-              sed -i "s/version: $CHART_VERSION/version: $LATEST_FOR_MM/g" ${{ env.CHART_PATH }}
-              
-              # Commit the version change
-              git add ${{ env.CHART_PATH }}
-              git commit -m "chore(chart): update chart version to $LATEST_FOR_MM"
-              git push origin $BRANCH
-              
-              # Create version tag for this update
-              BRANCH_MM=$(echo $BRANCH | grep -Eo "[0-9]+\.[0-9]+")
-              git tag "v$BRANCH_MM/$LATEST_FOR_MM"
-              git push origin "v$BRANCH_MM/$LATEST_FOR_MM"
-              
-              # Package and push chart to OCI registry with branch-specific tag
-              helm package ./zero-cache
-              CHART_PACKAGE=$(ls zero-cache-*.tgz)
-              helm push $CHART_PACKAGE oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPO }}
-
-              echo "Updated branch $BRANCH, created tag v$BRANCH_MM/$LATEST_FOR_MM, and pushed to OCI registry"
-            else
-              echo "Branch $BRANCH is already at the latest version $LATEST_FOR_MM"
-            fi
-          done
+          uv run version_manager.py \
+            --docker_image=rocicorp/zero \
+            --chart_path=Chart.yaml \
+            --values_path=values.yaml \
+            --oci_registry=ghcr.io \
+            --oci_repo=synapdeck/zero-cache/zero-cache

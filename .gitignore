@@ -60,6 +60,7 @@ package-lock.json
 yarn.lock
 
 # Python artifacts (if using Python tools)
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class
