@@ -11,6 +11,7 @@ This repository uses an automated GitHub Actions workflow to manage Docker image
 The system monitors the `rocicorp/zero` Docker image for new versions and updates the Helm chart accordingly:
 
 1. **Main Branch Updates**:
+
    - When a new version of the Docker image is released, changes are committed directly to the main branch
    - This ensures the main branch always points to the latest version
    - A version tag (e.g., `v0.20.2025051800`) is created for each update
@@ -34,6 +35,7 @@ The system runs on a schedule (every hour) and:
 7. Updates existing version branches with the latest build for their specific major.minor version
 
 This approach ensures that:
+
 - The main branch always gets the latest version
 - Version tags provide an easy way to reference specific versions
 - Helm charts are published to the OCI registry (ghcr.io) for easy consumption
@@ -55,24 +57,19 @@ The workflow is defined in `.github/workflows/version-management.yml` and monito
 The Helm chart is published to the GitHub Container Registry (ghcr.io) as an OCI artifact and can be used directly with Helm:
 
 ```bash
-# Login to the GitHub Container Registry (only needed once)
-helm registry login -u USERNAME ghcr.io -p GITHUB_TOKEN
-
 # Pull a specific chart version
-helm pull oci://ghcr.io/OWNER/zero-cache/zero-cache --version VERSION
+helm pull oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
 
 # Install the chart
-helm install zero-cache oci://ghcr.io/OWNER/zero-cache/zero-cache --version VERSION
+helm install zero-cache oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
 
 # Upgrade an existing installation
-helm upgrade zero-cache oci://ghcr.io/OWNER/zero-cache/zero-cache --version VERSION
+helm upgrade zero-cache oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
 ```
 
 Replace:
-- `OWNER` with the GitHub repository owner
+
 - `VERSION` with the desired chart version
-- `USERNAME` with your GitHub username
-- `GITHUB_TOKEN` with a GitHub personal access token with `read:packages` scope
 
 ### Available Versions
 
@@ -88,5 +85,5 @@ To view available chart versions:
 
 ```bash
 # List all versions of the chart
-helm search repo oci://ghcr.io/OWNER/zero-cache/zero-cache --versions
+helm search repo oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --versions
 ```
