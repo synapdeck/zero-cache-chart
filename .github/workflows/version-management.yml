@@ -36,11 +36,11 @@ jobs:
         with:
           registry: ${{ env.OCI_REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
           
-      - name: Set write permissions for GITHUB_TOKEN
+      - name: Set write permissions for GitHub Actions token
         run: |
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "GITHUB_TOKEN=${{ github.token }}" >> $GITHUB_ENV
 
       - name: Get current version from Chart.yaml
         id: current-version
@@ -71,16 +71,20 @@ jobs:
           echo "all_major_minor=$(echo $MAJOR_MINOR_VERSIONS | tr ' ' ',')" >> $GITHUB_OUTPUT
 
           # Create a JSON with latest version for each major.minor
-          echo "versions_json={" > versions.json
+          echo "{" > versions.json
           for MM in $MAJOR_MINOR_VERSIONS; do
             LATEST_FOR_MM=$(echo "$ALL_VERSIONS" | grep "^$MM\." | tail -n 1)
             echo "\"$MM\": \"$LATEST_FOR_MM\"," >> versions.json
           done
+          # Remove trailing comma and close JSON object
+          sed -i '$ s/,$//' versions.json
           echo "}" >> versions.json
-          cat versions.json | tr -d '\n' > versions_clean.json
-
-          VERSIONS_JSON=$(cat versions_clean.json)
-          echo "versions_json=$VERSIONS_JSON" >> $GITHUB_OUTPUT
+          
+          # Store JSON in output variable
+          VERSIONS_JSON=$(cat versions.json | tr -d '\n')
+          echo "versions_json<<EOF" >> $GITHUB_OUTPUT
+          echo "$VERSIONS_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Update main branch if needed
         if: steps.current-version.outputs.current_version != steps.docker-versions.outputs.latest_version
@@ -116,12 +120,12 @@ jobs:
 
           echo "Updated main branch to version ${{ steps.docker-versions.outputs.latest_version }}, created tag, and pushed to OCI registry"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create branch for new major.minor version if needed
         if: steps.docker-versions.outputs.latest_major_minor != steps.current-version.outputs.current_major_minor
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           NEW_MM="${{ steps.docker-versions.outputs.latest_major_minor }}"
           NEW_VERSION="${{ steps.docker-versions.outputs.latest_version }}"
@@ -163,7 +167,7 @@ jobs:
 
       - name: Update existing version branches
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Get all version branches
           git fetch origin
@@ -177,7 +181,7 @@ jobs:
             BRANCH_MM=$(echo $BRANCH | grep -Eo "[0-9]+\.[0-9]+")
 
             # Get latest version for this major.minor
-            LATEST_FOR_MM=$(echo $VERSIONS_JSON | jq -r ".[\"$BRANCH_MM\"]")
+            LATEST_FOR_MM=$(echo "$VERSIONS_JSON" | jq -r --arg mm "$BRANCH_MM" '.[$mm]')
 
             if [ "$LATEST_FOR_MM" = "null" ] || [ -z "$LATEST_FOR_MM" ]; then
               echo "No version found for $BRANCH_MM, skipping"
