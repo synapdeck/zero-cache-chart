@@ -1,152 +1,92 @@
-# Zero-Cache Helm Chart
+# Zero-Cache
 
-A Helm chart for deploying [zero-cache](https://zero.rocicorp.dev/docs/deployment), the horizontally scalable service that maintains a SQLite replica of your Postgres database for the [Zero](https://zero.rocicorp.dev/) framework.
+A Helm chart for deploying zero-cache, a horizontally scalable service that maintains a SQLite replica of your Postgres database for Zero.
 
-## Introduction
+## Version Management
 
-zero-cache is a stateful web service that maintains a SQLite replica of your Postgres database and uses this replica to sync ZQL queries to clients over WebSockets. It consists of two main components:
+This repository uses an automated GitHub Actions workflow to manage Docker image versions. Here's how it works:
 
-- **Replication Manager**: A single node that consumes the Postgres replication log and maintains the canonical SQLite replica.
-- **View Syncer**: Multiple nodes that handle WebSocket connections from clients and run ZQL queries.
+### Automated Version Management
 
-This Helm chart provides a cloud-agnostic way to deploy zero-cache on Kubernetes.
+The system monitors the `rocicorp/zero` Docker image for new versions and updates the Helm chart accordingly:
 
-## Prerequisites
+1. **Main Branch Updates**:
+   - When a new version of the Docker image is released, changes are committed directly to the main branch
+   - This ensures the main branch always points to the latest version
+   - A version tag (e.g., `v0.20.2025051800`) is created for each update
 
-- Kubernetes 1.19+
-- Helm 3.2.0+
-- An existing Postgres database with logical replication enabled (`wal_level=logical`)
-- S3-compatible object storage (optional, but recommended for high availability)
+2. **Version Branch Management**:
+   - For each major.minor version (e.g., `v0.20`), a dedicated branch is maintained
+   - When a new version is released with a new major.minor (e.g., `0.21.yyyymmddxx`), a new branch `v0.21` is automatically created
+   - Each version branch only receives updates to its specific major.minor version
+   - Branch-specific version tags (e.g., `v0.20/0.20.2025051800`) are created for each update
 
-## Installing the Chart
+### How It Works
 
-Add the repository:
+The system runs on a schedule (every hour) and:
 
-```bash
-helm repo add your-repo-name https://your-repo-url
-helm repo update
-```
+1. Fetches all available Docker image versions
+2. Updates the main branch with the latest version via direct commit
+3. Updates both the `appVersion` and chart `version` in Chart.yaml
+4. Creates a version tag for each update
+5. Packages and pushes the Helm chart to the GitHub Container Registry (ghcr.io)
+6. Creates new version branches for new major.minor versions
+7. Updates existing version branches with the latest build for their specific major.minor version
 
-To install the chart with the release name `zero-cache`:
+This approach ensures that:
+- The main branch always gets the latest version
+- Version tags provide an easy way to reference specific versions
+- Helm charts are published to the OCI registry (ghcr.io) for easy consumption
+- Chart version always matches the Docker image version for consistency
+- A new version branch is created for each new major.minor version
+- Existing version branches only receive build/date updates to their specific major.minor version
+- Consumers can easily select specific versions from the OCI registry
 
-```bash
-helm install zero-cache your-repo-name/zero-cache \
-  --set common.database.upstreamDb="postgres://user:password@postgres-host:5432/dbname" \
-  --set common.auth.secret="your-auth-secret"
-```
+## Manual Triggering
 
-## Uninstalling the Chart
-
-To uninstall/delete the `zero-cache` deployment:
-
-```bash
-helm delete zero-cache
-```
+You can manually trigger the version check by going to the Actions tab and running the "Docker Image Version Management" workflow.
 
 ## Configuration
 
-The following table lists the configurable parameters of the zero-cache chart and their default values.
+The workflow is defined in `.github/workflows/version-management.yml` and monitors the Docker image specified in the workflow configuration.
 
-### Critical Configuration Parameters
+## Using the Helm Chart from OCI Registry
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `common.database.upstreamDb` | Upstream Postgres database connection string | `""` (Required) |
-| `common.auth.secret` | Secret for JWT authentication | `""` (One of secret/jwk/jwksUrl required) |
-| `common.auth.jwk` | Public key in JWK format for JWT verification | `""` |
-| `common.auth.jwksUrl` | URL that returns a JWK set for JWT verification | `""` |
-| `common.replicaFile` | Path to the SQLite replica file | `/data/sync-replica.db` |
-| `common.litestream.backupUrl` | S3-compatible URL for replica backup (recommended) | `""` |
+The Helm chart is published to the GitHub Container Registry (ghcr.io) as an OCI artifact and can be used directly with Helm:
 
-### Component Sizing
+```bash
+# Login to the GitHub Container Registry (only needed once)
+helm registry login -u USERNAME ghcr.io -p GITHUB_TOKEN
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `replicationManager.replicas` | Number of replication manager replicas (should be 1) | `1` |
-| `viewSyncer.replicas` | Number of view syncer replicas | `2` |
-| `replicationManager.resources` | Resource requests and limits for replication manager | `{}` |
-| `viewSyncer.resources` | Resource requests and limits for view syncer | `{}` |
+# Pull a specific chart version
+helm pull oci://ghcr.io/OWNER/zero-cache/zero-cache --version VERSION
 
-### S3 Configuration (for Litestream)
+# Install the chart
+helm install zero-cache oci://ghcr.io/OWNER/zero-cache/zero-cache --version VERSION
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `s3.enabled` | Whether to use S3 credentials | `false` |
-| `s3.accessKey` | S3 access key | `""` |
-| `s3.secretKey` | S3 secret key | `""` |
-| `s3.region` | S3 region | `us-east-1` |
-| `s3.endpoint` | S3 endpoint for alternative providers | `""` |
-
-## Example: Deployment with MinIO
-
-```yaml
-common:
-  database:
-    upstreamDb: "postgres://user:password@postgres-host:5432/dbname"
-  auth:
-    secret: "your-auth-secret"
-  litestream:
-    backupUrl: "s3://zero-cache-bucket/backup"
-
-viewSyncer:
-  replicas: 3
-  ingress:
-    enabled: true
-    hosts:
-      - host: zero-cache.example.com
-        paths:
-          - path: /
-            pathType: Prefix
-
-s3:
-  enabled: true
-  accessKey: "minio-access-key"
-  secretKey: "minio-secret-key"
-  endpoint: "http://minio.default.svc.cluster.local:9000"
+# Upgrade an existing installation
+helm upgrade zero-cache oci://ghcr.io/OWNER/zero-cache/zero-cache --version VERSION
 ```
 
-## Example: Deployment with AWS S3
+Replace:
+- `OWNER` with the GitHub repository owner
+- `VERSION` with the desired chart version
+- `USERNAME` with your GitHub username
+- `GITHUB_TOKEN` with a GitHub personal access token with `read:packages` scope
 
-```yaml
-common:
-  database:
-    upstreamDb: "postgres://user:password@postgres-host:5432/dbname"
-  auth:
-    secret: "your-auth-secret"
-  litestream:
-    backupUrl: "s3://my-bucket/zero-cache-backup"
+### Available Versions
 
-replicationManager:
-  resources:
-    requests:
-      cpu: 500m
-      memory: 1Gi
+The OCI registry maintains multiple versions of the chart:
 
-viewSyncer:
-  replicas: 5
-  resources:
-    requests:
-      cpu: 1
-      memory: 2Gi
+- Latest version from the `main` branch
+- Specific versions tagged with the appVersion (e.g., `0.20.2025051800`)
+- Branch-specific versions for each major.minor version (e.g., `v0.20/0.20.2025051800`)
 
-s3:
-  enabled: true
-  accessKey: "aws-access-key"
-  secretKey: "aws-secret-key"
-  region: "us-west-2"
+### Viewing Available Charts
+
+To view available chart versions:
+
+```bash
+# List all versions of the chart
+helm search repo oci://ghcr.io/OWNER/zero-cache/zero-cache --versions
 ```
-
-## Troubleshooting
-
-If you encounter issues with the deployment, check:
-
-1. Postgres connection: Ensure your database is accessible and has logical replication enabled.
-2. S3 credentials: Verify credentials are correct and the bucket exists.
-3. Persistent volume: Ensure enough storage is allocated for your database size.
-4. Logs: Check the logs of both replication-manager and view-syncer pods.
-
-## Notes
-
-- The replication manager must be a singleton (single replica).
-- The view syncer can be scaled horizontally.
-- For high availability, use a shared S3 bucket for replication.
