@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union, Tuple, Any
 import yaml
 import requests
 from semver.version import Version
@@ -66,7 +66,9 @@ def get_current_version(chart_path: Path) -> Tuple[Optional[Version], Optional[s
     return current_version, current_major_minor
 
 
-def fetch_docker_versions(docker_image: str) -> Tuple[List[Version], Dict[str, Version]]:
+def fetch_docker_versions(
+    docker_image: str,
+) -> Tuple[List[Version], Dict[str, Version]]:
     """
     Fetch all versions of the Docker image
 
@@ -101,10 +103,7 @@ def fetch_docker_versions(docker_image: str) -> Tuple[List[Version], Dict[str, V
     for version in versions:
         major_minor = f"{version.major}.{version.minor}"
         # Only store the highest version for each major.minor
-        if (
-            major_minor not in version_map
-            or version_map[major_minor] < version
-        ):
+        if major_minor not in version_map or version_map[major_minor] < version:
             version_map[major_minor] = version
 
     latest_version = versions[-1] if versions else None
@@ -126,15 +125,15 @@ def get_version_branches() -> List[str]:
     )
     if output:
         branches = [
-            b.strip().replace("origin/", "")
-            for b in output.split("\n")
-            if b.strip()
+            b.strip().replace("origin/", "") for b in output.split("\n") if b.strip()
         ]
         return branches
     return []
 
 
-def update_chart_version(chart_path: Path, version: Union[Version, str], commit: bool = True) -> bool:
+def update_chart_version(
+    chart_path: Path, version: Union[Version, str], commit: bool = True
+) -> bool:
     """
     Update Chart.yaml with new version
 
@@ -175,10 +174,10 @@ def update_chart_version(chart_path: Path, version: Union[Version, str], commit:
 
         if commit:
             # Commit the change
-            add_result = run_command(f"git add {chart_path}", check=False)
+            run_command(f"git add {chart_path}", check=False)
             commit_result = run_command(
                 f'git commit -m "chore(chart): update Helm chart appVersion to {version_obj}"',
-                check=False
+                check=False,
             )
 
             if "nothing to commit" in commit_result:
@@ -200,20 +199,24 @@ def update_chart_version(chart_path: Path, version: Union[Version, str], commit:
             with open(chart_path, "w") as f:
                 yaml.dump(chart_data, f, default_flow_style=False)
 
-            print(f"Updated chart version from {current_chart_version} to {version_obj}")
+            print(
+                f"Updated chart version from {current_chart_version} to {version_obj}"
+            )
 
         if commit:
             # Commit the change
             run_command(f"git add {chart_path}", check=False)
             commit_result = run_command(
                 f'git commit -m "chore(chart): update chart version to {version_obj}"',
-                check=False
+                check=False,
             )
 
             if "nothing to commit" in commit_result:
                 print("No changes to commit for chart version")
             elif "error" in commit_result.lower():
-                print(f"Warning: Issue committing chart version change: {commit_result}")
+                print(
+                    f"Warning: Issue committing chart version change: {commit_result}"
+                )
 
         return True
 
@@ -222,7 +225,11 @@ def update_chart_version(chart_path: Path, version: Union[Version, str], commit:
         return False
 
 
-def create_tag(version: Union[Version, str], is_branch_tag: bool = False, branch_mm: Optional[str] = None) -> str:
+def create_tag(
+    version: Union[Version, str],
+    is_branch_tag: bool = False,
+    branch_mm: Optional[str] = None,
+) -> str:
     """
     Create a git tag for the given version
 
@@ -246,7 +253,7 @@ def create_tag(version: Union[Version, str], is_branch_tag: bool = False, branch
 
     # Check if tag already exists
     existing_tags = run_command("git tag -l", check=False)
-    if tag_name in existing_tags.split('\n'):
+    if tag_name in existing_tags.split("\n"):
         print(f"Tag {tag_name} already exists, skipping tag creation")
         return tag_name
 
@@ -265,6 +272,55 @@ def create_tag(version: Union[Version, str], is_branch_tag: bool = False, branch
         print(f"Successfully pushed tag {tag_name}")
 
     return tag_name
+
+
+def create_version_tags(
+    all_versions: List[Version],
+    version_map: Dict[str, Version],
+) -> List[str]:
+    """
+    Create tags for all versions independent of branch or OCI operations
+
+    Args:
+        all_versions: List of all version objects
+        version_map: Dictionary mapping major.minor to latest Version object
+
+    Returns:
+        List[str]: List of created tag names
+    """
+    if not all_versions:
+        return []
+
+    created_tags = []
+    latest_version = all_versions[-1]
+
+    # Create main tag for latest version
+    print(f"Creating tag for latest version: {latest_version}")
+    main_tag = create_tag(latest_version)
+    created_tags.append(main_tag)
+
+    # Get all version branches
+    git_branches = get_version_branches()
+    for branch in git_branches:
+        # Extract major.minor from branch name
+        match = re.search(r"v(\d+\.\d+)", branch)
+        if not match:
+            continue
+
+        branch_mm = match.group(1)
+        branch_version = version_map.get(branch_mm)
+
+        if not branch_version:
+            print(f"No version found for branch {branch}, skipping tag creation")
+            continue
+
+        # Create tag for this branch version
+        print(f"Creating tag for branch {branch} with version: {branch_version}")
+        branch_tag = create_tag(branch_version, is_branch_tag=True, branch_mm=branch_mm)
+        created_tags.append(branch_tag)
+
+    return created_tags
+
 
 def package_and_push_to_oci(oci_registry: str, oci_repo: str) -> bool:
     """
@@ -295,11 +351,15 @@ def package_and_push_to_oci(oci_registry: str, oci_repo: str) -> bool:
             return False
 
         # Try to push the chart
-        push_result = run_command(f"helm push {chart_package} oci://{oci_registry}/{oci_repo}", check=False)
+        push_result = run_command(
+            f"helm push {chart_package} oci://{oci_registry}/{oci_repo}", check=False
+        )
 
         # Check for common errors
         if "already exists" in push_result:
-            print(f"Chart version already exists in registry {oci_registry}/{oci_repo}, skipping push")
+            print(
+                f"Chart version already exists in registry {oci_registry}/{oci_repo}, skipping push"
+            )
             run_command(f"rm -f {chart_package}", check=False)  # Clean up
             return True
         elif "Error" in push_result or "error" in push_result.lower():
@@ -317,14 +377,11 @@ def package_and_push_to_oci(oci_registry: str, oci_repo: str) -> bool:
         run_command("rm -f zero-cache-*.tgz", check=False)
         return False
 
+
 def update_main_branch(
     chart_path: Path,
     all_versions: List[Version],
     current_version: Optional[Version],
-    manage_tags: bool = True,
-    manage_oci: bool = True,
-    oci_registry: Optional[str] = None,
-    oci_repo: Optional[str] = None
 ) -> Optional[Version]:
     """
     Update main branch with the latest version from Docker Hub
@@ -333,10 +390,6 @@ def update_main_branch(
         chart_path: Path to Chart.yaml
         all_versions: List of all version objects
         current_version: Current version object or None
-        manage_tags: Whether to create tags
-        manage_oci: Whether to push to OCI registry
-        oci_registry: OCI registry URL
-        oci_repo: OCI repository name
 
     Returns:
         Optional[Version]: Updated version if successful, None otherwise
@@ -368,13 +421,9 @@ def update_main_branch(
         )
 
     if latest_version.major > current_version.major:
-        print(
-            f"Major version bump detected: {current_version} → {latest_version}"
-        )
+        print(f"Major version bump detected: {current_version} → {latest_version}")
     elif latest_version.minor > current_version.minor:
-        print(
-            f"Minor version bump detected: {current_version} → {latest_version}"
-        )
+        print(f"Minor version bump detected: {current_version} → {latest_version}")
     else:
         print(f"Patch update detected: {current_version} → {latest_version}")
 
@@ -398,15 +447,8 @@ def update_main_branch(
         print("You may need to pull changes first or resolve conflicts")
         return None
 
-    # Create version tag if enabled
-    if manage_tags:
-        create_tag(latest_version)
-
-    # Package and push chart to OCI registry if enabled
-    if manage_oci and oci_registry and oci_repo:
-        package_and_push_to_oci(oci_registry, oci_repo)
-
     print(f"Updated main branch to {latest_version}")
+
     return latest_version
 
 
@@ -414,10 +456,6 @@ def create_new_version_branch(
     chart_path: Path,
     all_versions: List[Version],
     current_major_minor: Optional[str],
-    manage_tags: bool = True,
-    manage_oci: bool = True,
-    oci_registry: Optional[str] = None,
-    oci_repo: Optional[str] = None
 ) -> Optional[str]:
     """
     Create a new branch for latest major.minor version if it doesn't exist
@@ -426,10 +464,6 @@ def create_new_version_branch(
         chart_path: Path to Chart.yaml
         all_versions: List of all version objects
         current_major_minor: Current major.minor string
-        manage_tags: Whether to create tags
-        manage_oci: Whether to push to OCI registry
-        oci_registry: OCI registry URL
-        oci_repo: OCI repository name
 
     Returns:
         Optional[str]: Branch name if created, None otherwise
@@ -452,7 +486,9 @@ def create_new_version_branch(
             # Check if branch exists remotely (even if not locally)
             remote_branches = run_command("git ls-remote --heads origin", check=False)
             if f"refs/heads/{branch_name}" in remote_branches:
-                print(f"Branch {branch_name} already exists on remote, skipping creation")
+                print(
+                    f"Branch {branch_name} already exists on remote, skipping creation"
+                )
                 return None
 
             # Create new branch from main
@@ -465,9 +501,13 @@ def create_new_version_branch(
             if "error" in create_branch.lower():
                 if "already exists" in create_branch.lower():
                     print(f"Branch {branch_name} already exists locally")
-                    checkout_result = run_command(f"git checkout {branch_name}", check=False)
+                    checkout_result = run_command(
+                        f"git checkout {branch_name}", check=False
+                    )
                     if "error" in checkout_result.lower():
-                        print(f"Error checking out existing branch {branch_name}: {checkout_result}")
+                        print(
+                            f"Error checking out existing branch {branch_name}: {checkout_result}"
+                        )
                         return None
                 else:
                     print(f"Error creating branch {branch_name}: {create_branch}")
@@ -484,14 +524,6 @@ def create_new_version_branch(
                 print(f"Error pushing branch {branch_name}: {push_result}")
                 return None
 
-            # Create version tag if enabled
-            if manage_tags:
-                create_tag(latest_version, is_branch_tag=True, branch_mm=latest_major_minor)
-
-            # Package and push chart to OCI registry if enabled
-            if manage_oci and oci_registry and oci_repo:
-                package_and_push_to_oci(oci_registry, oci_repo)
-
             print(f"Created version branch {branch_name}")
             return branch_name
 
@@ -502,10 +534,6 @@ def update_version_branches(
     chart_path: Path,
     git_branches: List[str],
     version_map: Dict[str, Version],
-    manage_tags: bool = True,
-    manage_oci: bool = True,
-    oci_registry: Optional[str] = None,
-    oci_repo: Optional[str] = None
 ) -> List[str]:
     """
     Update all version branches with their latest corresponding Version objects
@@ -514,10 +542,6 @@ def update_version_branches(
         chart_path: Path to Chart.yaml
         git_branches: List of git branch names
         version_map: Dictionary mapping major.minor to latest Version object
-        manage_tags: Whether to create tags
-        manage_oci: Whether to push to OCI registry
-        oci_registry: OCI registry URL
-        oci_repo: OCI repository name
 
     Returns:
         List[str]: List of branches that were updated
@@ -550,8 +574,12 @@ def update_version_branches(
         # Make sure we have the latest from remote
         pull_result = run_command(f"git pull origin {branch}", check=False)
         if "error" in pull_result.lower() or "conflict" in pull_result.lower():
-            print(f"Warning: Issue pulling latest changes for branch {branch}: {pull_result}")
-            print(f"Will continue with local version, but you may need to resolve conflicts")
+            print(
+                f"Warning: Issue pulling latest changes for branch {branch}: {pull_result}"
+            )
+            print(
+                "Will continue with local version, but you may need to resolve conflicts"
+            )
 
         # Get current version
         try:
@@ -594,20 +622,73 @@ def update_version_branches(
                 print("Skipping further operations for this branch")
                 continue
 
-            # Create version tag if enabled
-            if manage_tags:
-                create_tag(latest_version, is_branch_tag=True, branch_mm=branch_mm)
-
-            # Package and push chart to OCI registry if enabled
-            if manage_oci and oci_registry and oci_repo:
-                package_and_push_to_oci(oci_registry, oci_repo)
-
             print(f"Updated branch {branch} to {latest_version}")
             updated_branches.append(branch)
         else:
             print(f"Branch {branch} already at latest version {latest_version}")
 
     return updated_branches
+
+
+def push_oci_packages(
+    all_versions: List[Version],
+    version_map: Dict[str, Version],
+    oci_registry: str,
+    oci_repo: str,
+) -> List[str]:
+    """
+    Push all version charts to OCI registry, independent of branch or tag operations
+
+    Args:
+        all_versions: List of all version objects
+        version_map: Dictionary mapping major.minor to latest Version object
+        oci_registry: OCI registry URL
+        oci_repo: OCI repository name
+
+    Returns:
+        List[str]: List of versions that were pushed to OCI
+    """
+    if not all_versions or not oci_registry or not oci_repo:
+        return []
+
+    pushed_versions = []
+    latest_version = all_versions[-1]
+
+    print(f"Pushing OCI packages for latest version: {latest_version}")
+
+    # Push main version to OCI
+    run_command("git checkout main", check=False)
+    if package_and_push_to_oci(oci_registry, oci_repo):
+        pushed_versions.append(str(latest_version))
+
+    # Handle version branch packages
+    git_branches = get_version_branches()
+    for branch in git_branches:
+        # Extract major.minor from branch name
+        match = re.search(r"v(\d+\.\d+)", branch)
+        if not match:
+            continue
+
+        branch_mm = match.group(1)
+        branch_version = version_map.get(branch_mm)
+
+        if not branch_version:
+            continue
+
+        print(f"Pushing OCI package for branch {branch} with version: {branch_version}")
+
+        # Need to checkout the branch first
+        checkout_result = run_command(f"git checkout {branch}", check=False)
+        if "error" in checkout_result.lower():
+            print(
+                f"Error checking out branch {branch}, skipping OCI push: {checkout_result}"
+            )
+            continue
+
+        if package_and_push_to_oci(oci_registry, oci_repo):
+            pushed_versions.append(str(branch_version))
+
+    return pushed_versions
 
 
 def run_version_management(
@@ -619,7 +700,7 @@ def run_version_management(
     manage_oci: bool = True,
     oci_registry: Optional[str] = None,
     oci_repo: Optional[str] = None,
-    dry_run: bool = False
+    dry_run: bool = False,
 ) -> int:
     """
     Run the complete version management process
@@ -633,118 +714,102 @@ def run_version_management(
         manage_oci: Whether to push to OCI registry
         oci_registry: OCI registry URL
         oci_repo: OCI repository name
+        dry_run: Whether to just simulate operations without making changes
 
     Returns:
         int: Exit code (0 for success, 1 for error)
     """
+    current_branch = None
+
+    # Validate required parameters
     if not docker_image:
         print("Error: Required parameter 'docker_image' is missing.")
         return 1
 
+    # Check OCI parameters if OCI management is enabled
     if manage_oci and (not oci_registry or not oci_repo):
-        print("Error: OCI registry parameters required when manage_oci is enabled. Please provide oci_registry and oci_repo.")
+        print(
+            "Error: OCI registry parameters required when manage_oci is enabled. Please provide oci_registry and oci_repo."
+        )
         return 1
 
     try:
+        # Set up dry run mode if requested
         if dry_run:
             print("DRY RUN MODE - No changes will be committed")
 
-        # Check if we're in a git repository
+        # Verify git repository
         git_check = run_command("git rev-parse --is-inside-work-tree", check=False)
         if "true" not in git_check.lower():
             print("Error: Not in a git repository")
             return 1
 
-        # Get current git state
+        # Save current git state
         current_branch = run_command("git branch --show-current", check=False)
         print(f"Current git branch: {current_branch}")
 
-        # Get current version information
+        # Get version information
         current_version, current_major_minor = get_current_version(chart_path)
-
-        # Fetch all versions from Docker Hub
         all_versions, version_map = fetch_docker_versions(docker_image)
 
+        # Initialize results tracking
         results = {
             "main_updated": False,
             "new_branch_created": None,
-            "updated_branches": []
+            "updated_branches": [],
+            "created_tags": [],
+            "pushed_oci_packages": [],
         }
 
-        # Update main branch if branch management is enabled
+        # Process branch management if enabled
         if manage_branches:
-            if dry_run:
-                print("DRY RUN: Would update main branch")
-                results["main_updated"] = False
-            else:
-                updated_version = update_main_branch(
-                    chart_path,
-                    all_versions,
-                    current_version,
-                    manage_tags=manage_tags,
-                    manage_oci=manage_oci,
-                    oci_registry=oci_registry,
-                    oci_repo=oci_repo
-                )
-                results["main_updated"] = updated_version is not None
+            results = _handle_branch_management(
+                dry_run,
+                chart_path,
+                all_versions,
+                current_version,
+                current_major_minor,
+                version_map,
+                results,
+            )
 
-            # Create new version branch if needed
-            if dry_run:
-                print("DRY RUN: Would create new version branch if needed")
-                results["new_branch_created"] = None
-            else:
-                new_branch = create_new_version_branch(
-                    chart_path,
-                    all_versions,
-                    current_major_minor,
-                    manage_tags=manage_tags,
-                    manage_oci=manage_oci,
-                    oci_registry=oci_registry,
-                    oci_repo=oci_repo
-                )
-                results["new_branch_created"] = new_branch
+        # Process tag management if enabled
+        if manage_tags:
+            results = _handle_tag_management(
+                dry_run, all_versions, version_map, results
+            )
 
-            # Get all version branches
-            git_branches = get_version_branches()
+        # Process OCI package management if enabled
+        if manage_oci and oci_registry and oci_repo:
+            results = _handle_oci_management(
+                dry_run, all_versions, version_map, oci_registry, oci_repo, results
+            )
 
-            # Update all version branches
-            if dry_run:
-                print("DRY RUN: Would update all version branches")
-                results["updated_branches"] = []
-            else:
-                updated_branches = update_version_branches(
-                    chart_path,
-                    git_branches,
-                    version_map,
-                    manage_tags=manage_tags,
-                    manage_oci=manage_oci,
-                    oci_registry=oci_registry,
-                    oci_repo=oci_repo
-                )
-                results["updated_branches"] = updated_branches
+        # Print summary of operations
+        _print_summary(manage_branches, manage_tags, manage_oci, results)
 
-        print("Version management complete")
-        print(f"Main branch updated: {results['main_updated']}")
-        if results["new_branch_created"]:
-            print(f"New branch created: {results['new_branch_created']}")
-        if results["updated_branches"]:
-            print(f"Updated branches: {', '.join(results['updated_branches'])}")
-
-        # Restore original branch if we changed it and we're not in dry run mode
-        if not dry_run and current_branch and current_branch != run_command("git branch --show-current", check=False):
+        # Restore original branch if changed and not in dry run mode
+        if (
+            not dry_run
+            and current_branch
+            and current_branch != run_command("git branch --show-current", check=False)
+        ):
             print(f"Restoring original branch: {current_branch}")
             restore_result = run_command(f"git checkout {current_branch}", check=False)
             if "error" in restore_result.lower():
-                print(f"Warning: Could not restore to original branch {current_branch}: {restore_result}")
+                print(
+                    f"Warning: Could not restore to original branch {current_branch}: {restore_result}"
+                )
 
         return 0
     except Exception as e:
         print(f"Error: {e}")
         import traceback
+
         traceback.print_exc()
 
         # Try to restore original branch in case of error
-        if not dry_run and 'current_branch' in locals() and current_branch:
+        if not dry_run and current_branch:
             print(f"Attempting to restore original branch: {current_branch}")
             try:
                 run_command(f"git checkout {current_branch}", check=False)
@@ -752,6 +817,115 @@ def run_version_management(
                 print(f"Failed to restore to original branch {current_branch}")
 
         return 1
+
+
+def _handle_branch_management(
+    dry_run: bool,
+    chart_path: Path,
+    all_versions: List[Version],
+    current_version: Optional[Version],
+    current_major_minor: Optional[str],
+    version_map: Dict[str, Version],
+    results: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Helper function to manage branches"""
+    if dry_run:
+        print("DRY RUN: Would update main branch")
+    else:
+        print("\n=== BRANCH MANAGEMENT ===")
+        # Update main branch
+        updated_version = update_main_branch(chart_path, all_versions, current_version)
+        results["main_updated"] = updated_version is not None
+
+        # Create new version branch if needed
+        new_branch = create_new_version_branch(
+            chart_path, all_versions, current_major_minor
+        )
+        results["new_branch_created"] = new_branch
+
+        # Get all version branches
+        git_branches = get_version_branches()
+
+        # Update all version branches
+        updated_branches = update_version_branches(
+            chart_path, git_branches, version_map
+        )
+        results["updated_branches"] = updated_branches
+
+    return results
+
+
+def _handle_tag_management(
+    dry_run: bool,
+    all_versions: List[Version],
+    version_map: Dict[str, Version],
+    results: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Helper function to manage tags"""
+    if dry_run:
+        print("DRY RUN: Would create version tags")
+    else:
+        print("\n=== TAG MANAGEMENT ===")
+        # Create tags for all versions
+        created_tags = create_version_tags(all_versions, version_map)
+        results["created_tags"] = created_tags
+
+    return results
+
+
+def _handle_oci_management(
+    dry_run: bool,
+    all_versions: List[Version],
+    version_map: Dict[str, Version],
+    oci_registry: str,
+    oci_repo: str,
+    results: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Helper function to manage OCI packages"""
+    if dry_run:
+        print("DRY RUN: Would push packages to OCI registry")
+    else:
+        print("\n=== OCI PACKAGE MANAGEMENT ===")
+        # Push packages to OCI registry
+        pushed_packages = push_oci_packages(
+            all_versions, version_map, oci_registry, oci_repo
+        )
+        results["pushed_oci_packages"] = pushed_packages
+
+    return results
+
+
+def _print_summary(
+    manage_branches: bool,
+    manage_tags: bool,
+    manage_oci: bool,
+    results: Dict[str, Any],
+) -> None:
+    """Print summary of operations performed"""
+    print("\n=== SUMMARY ===")
+    if manage_branches:
+        print("Branch management:")
+        print(f"  - Main branch updated: {results['main_updated']}")
+        if results["new_branch_created"]:
+            print(f"  - New branch created: {results['new_branch_created']}")
+        if results["updated_branches"]:
+            print(f"  - Updated branches: {', '.join(results['updated_branches'])}")
+        else:
+            print("  - No branches needed updating")
+
+    if manage_tags:
+        print("Tag management:")
+        if results["created_tags"]:
+            print(f"  - Created tags: {', '.join(results['created_tags'])}")
+        else:
+            print("  - No new tags created, all tags already exist")
+
+    if manage_oci:
+        print("OCI package management:")
+        if results["pushed_oci_packages"]:
+            print(f"  - Pushed packages: {', '.join(results['pushed_oci_packages'])}")
+        else:
+            print("  - No new packages pushed to OCI registry")
 
 
 def main(
@@ -763,10 +937,13 @@ def main(
     manage_branches: bool = True,
     manage_tags: bool = True,
     manage_oci: bool = True,
-    dry_run: bool = False
+    dry_run: bool = False,
 ) -> int:
     """
     Manage Docker image versions and update Helm charts accordingly.
+
+    Each management operation (branches, tags, OCI packages) is completely independent
+    and can be enabled or disabled as needed.
 
     Args:
         docker_image: Docker image name (e.g., 'rocicorp/zero')
@@ -777,6 +954,7 @@ def main(
         manage_branches: Whether to update branches (default: True)
         manage_tags: Whether to create tags (default: True)
         manage_oci: Whether to push to OCI registry (default: True)
+        dry_run: Whether to just simulate operations without making changes (default: False)
 
     Returns:
         int: Exit code (0 for success, 1 for error)
@@ -790,7 +968,7 @@ def main(
         manage_oci=manage_oci,
         oci_registry=oci_registry if oci_registry else None,
         oci_repo=oci_repo if oci_repo else None,
-        dry_run=dry_run
+        dry_run=dry_run,
     )
 
 

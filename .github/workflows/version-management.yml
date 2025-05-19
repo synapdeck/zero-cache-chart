@@ -55,4 +55,4 @@ jobs:
             --chart_path=Chart.yaml \
             --values_path=values.yaml \
             --oci_registry=ghcr.io \
-            --oci_repo=synapdeck/zero-cache/zero-cache
+            --oci_repo=synapdeck/zero-cache-chart
