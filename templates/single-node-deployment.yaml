@@ -4,18 +4,18 @@ kind: Deployment
 metadata:
   name: {{ include "zero-cache.fullname" . }}
   labels:
-    {{- include "zero-cache.labels" . | nindent 4 }}
+    {{- toYaml (include "zero-cache.labels" .) | nindent 4 }}
     app.kubernetes.io/component: single-node
 spec:
   replicas: 1  selector:
     matchLabels:
-      {{- include "zero-cache.selectorLabels" . | nindent 6 }}
+      {{- toYaml (include "zero-cache.selectorLabels" .) | nindent 6 }}
       app.kubernetes.io/component: single-node
   strategy:
     type: Recreate  template:
     metadata:
       labels:
-        {{- include "zero-cache.selectorLabels" . | nindent 8 }}
+        {{- toYaml (include "zero-cache.selectorLabels" .) | nindent 8 }}
         app.kubernetes.io/component: single-node
       {{- with .Values.singleNode.podAnnotations }}
       annotations:
