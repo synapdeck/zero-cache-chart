@@ -9,8 +9,6 @@
 .zed/
 .helmignore
 .venv/
-**/__pycache__/
-**/*.py[cod]
 *.so
 .Python
 build/
