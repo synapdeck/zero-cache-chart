@@ -7,7 +7,8 @@ metadata:
     {{- toYaml (include "zero-cache.labels" .) | nindent 4 }}
     app.kubernetes.io/component: single-node
 spec:
-  replicas: 1  selector:
+  replicas: 1
+  selector:
     matchLabels:
       {{- toYaml (include "zero-cache.selectorLabels" .) | nindent 6 }}
       app.kubernetes.io/component: single-node
