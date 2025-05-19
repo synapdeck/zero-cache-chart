@@ -1,0 +1,49 @@
+# Patterns to ignore when building packages.
+# This supports shell glob matching, relative path matching, and
+# negation (prefixed with !). Only one pattern per line.
+
+# Common files and directories
+.git/
+.github/
+.gitignore
+.zed/
+.helmignore
+.venv/
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+OWNERS
+*.toml
+*.lock
+*.py
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*~
+.directory
+.Trash-*
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.log
+node_modules/
+jspm_packages/
+bower_components/
+
+# Specific project files
+version_manager.py
+mise.toml
+pyproject.toml
+uv.lock
