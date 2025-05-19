@@ -82,7 +82,8 @@ spec:
             - name: ZERO_AUTO_RESET
               value: "{{ .Values.common.autoReset }}"
             - name: ZERO_CHANGE_STREAMER_MODE
-              value: "discover"            {{- if or .Values.common.auth.secret.value .Values.common.auth.secret.valueFrom }}
+              value: "discover"
+            {{- if or .Values.common.auth.secret.value .Values.common.auth.secret.valueFrom }}
             - name: ZERO_AUTH_SECRET
               {{- if .Values.common.auth.secret.value }}
               valueFrom:
@@ -114,37 +115,54 @@ spec:
               valueFrom:
                 {{ toYaml .Values.common.auth.jwksUrl.valueFrom | indent 16 }}
               {{- end }}
-            {{- end }}            {{- if .Values.common.adminPassword }}
+            {{- end }}
+            {{- if .Values.common.adminPassword }}
             - name: ZERO_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-admin
                   key: admin-password
-            {{- end }}            - name: ZERO_UPSTREAM_DB
+            {{- end }}
+            - name: ZERO_UPSTREAM_DB
+              {{- if .Values.common.database.upstream.url.valueFrom }}
+              valueFrom:
+                {{ toYaml .Values.common.database.upstream.url.valueFrom | nindent 16 }}
+              {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-db
                   key: upstream-db
+              {{- end }}
             - name: ZERO_UPSTREAM_MAX_CONNS
-              value: "{{ .Values.common.database.upstreamMaxConns }}"
-            {{- if .Values.common.database.cvrDb }}
+              value: "{{ .Values.common.database.upstream.maxConns }}"
+            {{- if or .Values.common.database.cvr.url.value .Values.common.database.cvr.url.valueFrom }}
             - name: ZERO_CVR_DB
+              {{- if .Values.common.database.cvr.url.valueFrom }}
+              valueFrom:
+                {{ toYaml .Values.common.database.cvr.url.valueFrom | nindent 16 }}
+              {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-db
                   key: cvr-db
+              {{- end }}
             {{- end }}
             - name: ZERO_CVR_MAX_CONNS
-              value: "{{ .Values.common.database.cvrMaxConns }}"
-            {{- if .Values.common.database.changeDb }}
+              value: "{{ .Values.common.database.cvr.maxConns }}"
+            {{- if or .Values.common.database.change.url.value .Values.common.database.change.url.valueFrom }}
             - name: ZERO_CHANGE_DB
+              {{- if .Values.common.database.change.url.valueFrom }}
+              valueFrom:
+                {{ toYaml .Values.common.database.change.url.valueFrom | nindent 16 }}
+              {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-db
                   key: change-db
+              {{- end }}
             {{- end }}
             - name: ZERO_CHANGE_MAX_CONNS
-              value: "{{ .Values.common.database.changeMaxConns }}"
+              value: "{{ .Values.common.database.change.maxConns }}"
             {{- if .Values.s3.enabled }}
             {{- if or .Values.s3.accessKey.value .Values.s3.accessKey.valueFrom }}
             - name: AWS_ACCESS_KEY_ID
@@ -186,14 +204,16 @@ spec:
             - name: ZERO_LITESTREAM_RESTORE_PARALLELISM
               value: "{{ .Values.common.litestream.restoreParallelism }}"
             - name: ZERO_LITESTREAM_LOG_LEVEL
-              value: "{{ .Values.common.litestream.logLevel }}"            {{- if .Values.common.performance.replicaVacuumIntervalHours }}
+              value: "{{ .Values.common.litestream.logLevel }}"
+            {{- if .Values.common.performance.replicaVacuumIntervalHours }}
             - name: ZERO_REPLICA_VACUUM_INTERVAL_HOURS
               value: "{{ .Values.common.performance.replicaVacuumIntervalHours }}"
             {{- end }}
             - name: ZERO_INITIAL_SYNC_TABLE_COPY_WORKERS
               value: "{{ .Values.common.performance.initialSyncTableCopyWorkers }}"
             - name: ZERO_TARGET_CLIENT_ROW_COUNT
-              value: "{{ .Values.common.performance.targetClientRowCount }}"            - name: ZERO_LOG_FORMAT
+              value: "{{ .Values.common.performance.targetClientRowCount }}"
+            - name: ZERO_LOG_FORMAT
               value: "{{ .Values.common.logging.format }}"
             - name: ZERO_LOG_LEVEL
               value: "{{ .Values.common.logging.level }}"
@@ -212,12 +232,14 @@ spec:
               value: "{{ .Values.common.logging.otel.resourceAttributes }}"
             - name: OTEL_NODE_RESOURCE_DETECTORS
               value: "{{ .Values.common.logging.otel.nodeResourceDetectors }}"
-            {{- end }}            {{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
+            {{- end }}
+            {{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
             - name: ZERO_PER_USER_MUTATION_LIMIT_MAX
               value: "{{ .Values.common.rateLimiting.perUserMutationLimitMax }}"
             {{- end }}
             - name: ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS
-              value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"            {{- if .Values.common.customMutators.pushUrl }}
+              value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"
+            {{- if .Values.common.customMutators.pushUrl }}
             - name: ZERO_PUSH_URL
               value: "{{ .Values.common.customMutators.pushUrl }}"
             {{- end }}
@@ -246,4 +268,4 @@ spec:
         {{- else }}
           emptyDir: {}
         {{- end }}
-{{ end }}
+{{- end }}

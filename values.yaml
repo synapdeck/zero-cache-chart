@@ -29,12 +29,12 @@ common:
     secret:
       {}
       # Direct value for the secret
-      # value: ""
+      # value: "your-jwt-secret-key"
       # Or, reference a value from a configMap, secret, etc.
       # valueFrom:
       #   secretKeyRef:
-      #     name: my-secret
-      #     key: auth-secret
+      #     name: my-auth-secret
+      #     key: jwt-secret
       #     optional: false
       #   # or configMapKeyRef, fieldRef, resourceFieldRef
 
@@ -42,23 +42,23 @@ common:
     jwk:
       {}
       # Direct value for the JWK
-      # value: ""
+      # value: '{"kty":"RSA","e":"AQAB","kid":"your-key-id","n":"your-public-key-data"}'
       # Or, reference a value from a configMap, secret, etc.
       # valueFrom:
       #   secretKeyRef:
-      #     name: my-secret
-      #     key: auth-jwk
+      #     name: my-auth-jwk
+      #     key: public-key
       #     optional: false
       #   # or configMapKeyRef, fieldRef, resourceFieldRef
     # URL that returns a JWK set (often provided by auth services like Auth0, Cognito)
     jwksUrl:
       {}
       # Direct value for the JWKS URL
-      # value: ""
+      # value: "https://your-auth-domain.auth0.com/.well-known/jwks.json"
       # Or, reference a value from a configMap, secret, etc.
       # valueFrom:
       #   configMapKeyRef:
-      #     name: my-config
+      #     name: my-auth-config
       #     key: jwks-url
       #     optional: false
       #   # or secretKeyRef, fieldRef, resourceFieldRef
@@ -68,18 +68,53 @@ common:
 
   # Database configuration
   database:
-    # Required: Upstream Postgres database connection string
-    upstreamDb: ""
-    # Max connections to upstream database
-    upstreamMaxConns: 20
-    # CVR database connection string (defaults to upstreamDb if not set)
-    cvrDb: ""
-    # Max connections to CVR database
-    cvrMaxConns: 30
-    # Change database connection string (defaults to upstreamDb if not set)
-    changeDb: ""
-    # Max connections to change database
-    changeMaxConns: 5
+    # Upstream database connection configuration
+    upstream:
+      # Database connection string (PostgreSQL URL format)
+      url:
+        {}
+        # Direct value for the connection string
+        # value: "postgres://app_user:password123@postgres-primary.default.svc.cluster.local:5432/app_db"
+        # Or, reference a value from a configMap, secret, etc.
+        # valueFrom:
+        #   secretKeyRef:
+        #     name: postgres-credentials
+        #     key: upstream-url
+        #     optional: false
+      # Max connections to upstream database
+      maxConns: 20
+
+    # CVR database connection configuration
+    cvr:
+      # Database connection string (PostgreSQL URL format)
+      url:
+        {}
+        # Direct value for the connection string
+        # value: "postgres://cvr_user:password123@postgres-cvr.default.svc.cluster.local:5432/cvr_db"
+        # Or, reference a value from a configMap, secret, etc.
+        # valueFrom:
+        #   secretKeyRef:
+        #     name: postgres-credentials
+        #     key: cvr-url
+        #     optional: false
+      # Max connections to CVR database
+      maxConns: 30
+
+    # Change database connection configuration
+    change:
+      # Database connection string (PostgreSQL URL format)
+      url:
+        {}
+        # Direct value for the connection string
+        # value: "postgres://change_user:password123@postgres-change.default.svc.cluster.local:5432/change_db"
+        # Or, reference a value from a configMap, secret, etc.
+        # valueFrom:
+        #   secretKeyRef:
+        #     name: postgres-credentials
+        #     key: change-url
+        #     optional: false
+      # Max connections to change database
+      maxConns: 5
 
   # Litestream configuration for SQLite replication
   litestream:
@@ -117,13 +152,12 @@ common:
     # IVM sampling rate (1 in N requests)
     ivmSampling: 5000
     # OpenTelemetry traces
-    otel: 
+    otel:
       enable: false
       endpoint: ""
       headers: ""
       resourceAttributes: ""
       nodeResourceDetectors: ""
-
 
   # Rate limiting
   rateLimiting:
@@ -337,22 +371,22 @@ s3:
   accessKey:
     {}
     # Direct value for the access key
-    # value: ""
+    # value: "AKIAIOSFODNN7EXAMPLE"
     # Or, reference a value from a configMap, secret, etc.
     # valueFrom:
     #   secretKeyRef:
-    #     name: my-secret
+    #     name: aws-s3-credentials
     #     key: access-key
     #     optional: false
     #   # or configMapKeyRef, fieldRef, resourceFieldRef
   secretKey:
     {}
     # Direct value for the secret key
-    # value: ""
+    # value: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
     # Or, reference a value from a configMap, secret, etc.
     # valueFrom:
     #   secretKeyRef:
-    #     name: my-secret
+    #     name: aws-s3-credentials
     #     key: secret-key
     #     optional: false
     #   # or configMapKeyRef, fieldRef, resourceFieldRef

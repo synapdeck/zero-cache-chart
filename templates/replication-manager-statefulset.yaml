@@ -110,30 +110,47 @@ spec:
                   key: admin-password
             {{- end }}
             - name: ZERO_UPSTREAM_DB
+              {{- if .Values.common.database.upstream.url.valueFrom }}
+              valueFrom:
+                {{ toYaml .Values.common.database.upstream.url.valueFrom | nindent 16 }}
+              {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-db
                   key: upstream-db
+              {{- end }}
             - name: ZERO_UPSTREAM_MAX_CONNS
-              value: "{{ .Values.common.database.upstreamMaxConns }}"
-            {{- if .Values.common.database.cvrDb }}
+              value: "{{ .Values.common.database.upstream.maxConns }}"
+            {{- if or .Values.common.database.cvr.url.value .Values.common.database.cvr.url.valueFrom }}
             - name: ZERO_CVR_DB
+              {{- if .Values.common.database.cvr.url.valueFrom }}
+              valueFrom:
+                {{ toYaml .Values.common.database.cvr.url.valueFrom | nindent 16 }}
+              {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-db
                   key: cvr-db
+              {{- end }}
             {{- end }}
             - name: ZERO_CVR_MAX_CONNS
-              value: "{{ .Values.common.database.cvrMaxConns }}"
-            {{- if .Values.common.database.changeDb }}
+              value: "{{ .Values.common.database.cvr.maxConns }}"
+            - name: ZERO_CHANGE_MAX_CONNS
+              value: "{{ .Values.common.database.change.maxConns }}"
+            {{- if or .Values.common.database.change.url.value .Values.common.database.change.url.valueFrom }}
             - name: ZERO_CHANGE_DB
+              {{- if .Values.common.database.change.url.valueFrom }}
+              valueFrom:
+                {{ toYaml .Values.common.database.change.url.valueFrom | nindent 16 }}
+              {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-db
                   key: change-db
+              {{- end }}
             {{- end }}
             - name: ZERO_CHANGE_MAX_CONNS
-              value: "{{ .Values.common.database.changeMaxConns }}"
+              value: "{{ .Values.common.database.change.maxConns }}"
             {{- if .Values.common.litestream.backupUrl }}
             - name: ZERO_LITESTREAM_BACKUP_URL
               value: "{{ .Values.common.litestream.backupUrl }}"
