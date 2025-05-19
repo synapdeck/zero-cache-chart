@@ -1,21 +1,21 @@
-{{- if .Values.replicationManager.pdb.enabled }}
+{{- if and (not .Values.singleNode.enabled) .Values.viewSyncer.pdb.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "zero-cache.fullname" . }}-replication-manager
+  name: {{ include "zero-cache.fullname" . }}-view-syncer
   labels:
     {{- include "zero-cache.labels" . | nindent 4 }}
-    app.kubernetes.io/component: replication-manager
+    app.kubernetes.io/component: view-syncer
 spec:
-  {{- if .Values.replicationManager.pdb.minAvailable }}
-  minAvailable: {{ .Values.replicationManager.pdb.minAvailable }}
-  {{- else if .Values.replicationManager.pdb.maxUnavailable }}
-  maxUnavailable: {{ .Values.replicationManager.pdb.maxUnavailable }}
+  {{- if .Values.viewSyncer.pdb.minAvailable }}
+  minAvailable: {{ .Values.viewSyncer.pdb.minAvailable }}
+  {{- else if .Values.viewSyncer.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.viewSyncer.pdb.maxUnavailable }}
   {{- else }}
   minAvailable: 1
   {{- end }}
   selector:
     matchLabels:
       {{- include "zero-cache.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: replication-manager
+      app.kubernetes.io/component: view-syncer
 {{- end }}

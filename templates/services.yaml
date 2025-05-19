@@ -1,5 +1,4 @@
----
-# Service for replication-manager
+{{- if not .Values.singleNode.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -22,7 +21,6 @@ spec:
     {{- include "zero-cache.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: replication-manager
 ---
-# Service for view-syncer
 apiVersion: v1
 kind: Service
 metadata:
@@ -31,7 +29,6 @@ metadata:
     {{- include "zero-cache.labels" . | nindent 4 }}
     app.kubernetes.io/component: view-syncer
   annotations:
-    # SessionAffinity is recommended for view-syncer to ensure clients consistently connect to the same instance
     service.kubernetes.io/session-affinity: "ClientIP"
     service.kubernetes.io/session-affinity-timeout: "3600"
     {{- with .Values.viewSyncer.service.annotations }}
@@ -47,3 +44,22 @@ spec:
   selector:
     {{- include "zero-cache.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: view-syncer
+{{- else }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zero-cache.fullname" . }}
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: single-node
+spec:
+  type: {{ .Values.singleNode.service.type }}
+  ports:
+    - port: {{ .Values.singleNode.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "zero-cache.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: single-node
+{{- end }}

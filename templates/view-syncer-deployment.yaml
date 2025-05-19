@@ -1,3 +1,4 @@
+{{ if not .Values.singleNode.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -80,31 +81,17 @@ spec:
               value: "{{ .Values.common.replicaFile }}"
             - name: ZERO_AUTO_RESET
               value: "{{ .Values.common.autoReset }}"
-            - name: ZERO_CHANGE_STREAMER_URI
-              value: "http://{{ include "zero-cache.fullname" . }}-replication-manager:{{ .Values.replicationManager.service.port }}"
-            # Auth configuration - only one of these should be set
-            {{- if or .Values.common.auth.secret.value .Values.common.auth.secret.valueFrom }}
+            - name: ZERO_CHANGE_STREAMER_MODE
+              value: "discover"            {{- if or .Values.common.auth.secret.value .Values.common.auth.secret.valueFrom }}
             - name: ZERO_AUTH_SECRET
               {{- if .Values.common.auth.secret.value }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-auth
                   key: auth-secret
-              {{- else if .Values.common.auth.secret.valueFrom }}
+              {{- else }}
               valueFrom:
-                {{- if .Values.common.auth.secret.valueFrom.secretKeyRef }}
-                secretKeyRef:
-                  {{- toYaml .Values.common.auth.secret.valueFrom.secretKeyRef | nindent 18 }}
-                {{- else if .Values.common.auth.secret.valueFrom.configMapKeyRef }}
-                configMapKeyRef:
-                  {{- toYaml .Values.common.auth.secret.valueFrom.configMapKeyRef | nindent 18 }}
-                {{- else if .Values.common.auth.secret.valueFrom.fieldRef }}
-                fieldRef:
-                  {{- toYaml .Values.common.auth.secret.valueFrom.fieldRef | nindent 18 }}
-                {{- else if .Values.common.auth.secret.valueFrom.resourceFieldRef }}
-                resourceFieldRef:
-                  {{- toYaml .Values.common.auth.secret.valueFrom.resourceFieldRef | nindent 18 }}
-                {{- end }}
+                {{ toYaml .Values.common.auth.secret.valueFrom | indent 16 }}
               {{- end }}
             {{- end }}
             {{- if or .Values.common.auth.jwk.value .Values.common.auth.jwk.valueFrom }}
@@ -114,54 +101,26 @@ spec:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-auth
                   key: auth-jwk
-              {{- else if .Values.common.auth.jwk.valueFrom }}
+              {{- else }}
               valueFrom:
-                {{- if .Values.common.auth.jwk.valueFrom.secretKeyRef }}
-                secretKeyRef:
-                  {{- toYaml .Values.common.auth.jwk.valueFrom.secretKeyRef | nindent 18 }}
-                {{- else if .Values.common.auth.jwk.valueFrom.configMapKeyRef }}
-                configMapKeyRef:
-                  {{- toYaml .Values.common.auth.jwk.valueFrom.configMapKeyRef | nindent 18 }}
-                {{- else if .Values.common.auth.jwk.valueFrom.fieldRef }}
-                fieldRef:
-                  {{- toYaml .Values.common.auth.jwk.valueFrom.fieldRef | nindent 18 }}
-                {{- else if .Values.common.auth.jwk.valueFrom.resourceFieldRef }}
-                resourceFieldRef:
-                  {{- toYaml .Values.common.auth.jwk.valueFrom.resourceFieldRef | nindent 18 }}
-                {{- end }}
+                {{ toYaml .Values.common.auth.jwk.valueFrom | indent 16 }}
               {{- end }}
             {{- end }}
             {{- if or .Values.common.auth.jwksUrl.value .Values.common.auth.jwksUrl.valueFrom }}
             - name: ZERO_AUTH_JWKS_URL
               {{- if .Values.common.auth.jwksUrl.value }}
               value: "{{ .Values.common.auth.jwksUrl.value }}"
-              {{- else if .Values.common.auth.jwksUrl.valueFrom }}
+              {{- else }}
               valueFrom:
-                {{- if .Values.common.auth.jwksUrl.valueFrom.secretKeyRef }}
-                secretKeyRef:
-                  {{- toYaml .Values.common.auth.jwksUrl.valueFrom.secretKeyRef | nindent 18 }}
-                {{- else if .Values.common.auth.jwksUrl.valueFrom.configMapKeyRef }}
-                configMapKeyRef:
-                  {{- toYaml .Values.common.auth.jwksUrl.valueFrom.configMapKeyRef | nindent 18 }}
-                {{- else if .Values.common.auth.jwksUrl.valueFrom.fieldRef }}
-                fieldRef:
-                  {{- toYaml .Values.common.auth.jwksUrl.valueFrom.fieldRef | nindent 18 }}
-                {{- else if .Values.common.auth.jwksUrl.valueFrom.resourceFieldRef }}
-                resourceFieldRef:
-                  {{- toYaml .Values.common.auth.jwksUrl.valueFrom.resourceFieldRef | nindent 18 }}
-                {{- end }}
+                {{ toYaml .Values.common.auth.jwksUrl.valueFrom | indent 16 }}
               {{- end }}
-            {{- end }}
-            # Admin password if specified
-            {{- if .Values.common.adminPassword }}
+            {{- end }}            {{- if .Values.common.adminPassword }}
             - name: ZERO_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-admin
                   key: admin-password
-            {{- end }}
-            # Database connection strings
-            - name: ZERO_UPSTREAM_DB
+            {{- end }}            - name: ZERO_UPSTREAM_DB
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-db
@@ -186,21 +145,31 @@ spec:
             {{- end }}
             - name: ZERO_CHANGE_MAX_CONNS
               value: "{{ .Values.common.database.changeMaxConns }}"
-            # Litestream configuration
-            {{- if .Values.common.litestream.backupUrl }}
-            - name: ZERO_LITESTREAM_BACKUP_URL
-              value: "{{ .Values.common.litestream.backupUrl }}"
             {{- if .Values.s3.enabled }}
+            {{- if or .Values.s3.accessKey.value .Values.s3.accessKey.valueFrom }}
             - name: AWS_ACCESS_KEY_ID
+              {{- if .Values.s3.accessKey.value }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-s3
                   key: access-key
+              {{- else }}
+              valueFrom:
+                {{ toYaml .Values.s3.accessKey.valueFrom | indent 16 }}
+              {{- end }}
+            {{- end }}
+            {{- if or .Values.s3.secretKey.value .Values.s3.secretKey.valueFrom }}
             - name: AWS_SECRET_ACCESS_KEY
+              {{- if .Values.s3.secretKey.value }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-s3
                   key: secret-key
+              {{- else }}
+              valueFrom:
+                {{ toYaml .Values.s3.secretKey.valueFrom | indent 16 }}
+              {{- end }}
+            {{- end }}
             - name: AWS_REGION
               value: "{{ .Values.s3.region }}"
             {{- if .Values.s3.endpoint }}
@@ -217,21 +186,14 @@ spec:
             - name: ZERO_LITESTREAM_RESTORE_PARALLELISM
               value: "{{ .Values.common.litestream.restoreParallelism }}"
             - name: ZERO_LITESTREAM_LOG_LEVEL
-              value: "{{ .Values.common.litestream.logLevel }}"
-            {{- end }}
-            # Performance configuration
-            {{- if .Values.common.performance.replicaVacuumIntervalHours }}
+              value: "{{ .Values.common.litestream.logLevel }}"            {{- if .Values.common.performance.replicaVacuumIntervalHours }}
             - name: ZERO_REPLICA_VACUUM_INTERVAL_HOURS
               value: "{{ .Values.common.performance.replicaVacuumIntervalHours }}"
             {{- end }}
-            - name: ZERO_INITIAL_SYNC_ROW_BATCH_SIZE
-              value: "{{ .Values.common.performance.initialSyncRowBatchSize }}"
             - name: ZERO_INITIAL_SYNC_TABLE_COPY_WORKERS
               value: "{{ .Values.common.performance.initialSyncTableCopyWorkers }}"
             - name: ZERO_TARGET_CLIENT_ROW_COUNT
-              value: "{{ .Values.common.performance.targetClientRowCount }}"
-            # Logging configuration
-            - name: ZERO_LOG_FORMAT
+              value: "{{ .Values.common.performance.targetClientRowCount }}"            - name: ZERO_LOG_FORMAT
               value: "{{ .Values.common.logging.format }}"
             - name: ZERO_LOG_LEVEL
               value: "{{ .Values.common.logging.level }}"
@@ -241,19 +203,21 @@ spec:
               value: "{{ .Values.common.logging.slowRowThreshold }}"
             - name: ZERO_LOG_IVM_SAMPLING
               value: "{{ .Values.common.logging.ivmSampling }}"
-            {{- if .Values.common.logging.traceCollector }}
-            - name: ZERO_LOG_TRACE_COLLECTOR
-              value: "{{ .Values.common.logging.traceCollector }}"
-            {{- end }}
-            # Rate limiting
-            {{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
+            {{- if .Values.common.logging.otel.enable }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "{{ .Values.common.logging.otel.endpoint }}"
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              value: "{{ .Values.common.logging.otel.headers }}"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "{{ .Values.common.logging.otel.resourceAttributes }}"
+            - name: OTEL_NODE_RESOURCE_DETECTORS
+              value: "{{ .Values.common.logging.otel.nodeResourceDetectors }}"
+            {{- end }}            {{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
             - name: ZERO_PER_USER_MUTATION_LIMIT_MAX
               value: "{{ .Values.common.rateLimiting.perUserMutationLimitMax }}"
             {{- end }}
             - name: ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS
-              value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"
-            # Custom mutations
-            {{- if .Values.common.customMutators.pushUrl }}
+              value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"            {{- if .Values.common.customMutators.pushUrl }}
             - name: ZERO_PUSH_URL
               value: "{{ .Values.common.customMutators.pushUrl }}"
             {{- end }}
@@ -282,3 +246,4 @@ spec:
         {{- else }}
           emptyDir: {}
         {{- end }}
+{{ end }}

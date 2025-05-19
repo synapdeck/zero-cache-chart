@@ -1,0 +1,12 @@
+# Example values.yaml for a single-node deployment of zero-cache
+
+common:
+  auth:
+    secret:
+      value: "your-secret-key"
+  
+  database:
+    upstreamDb: "postgresql://user:password@postgres-host:5432/postgres"
+
+singleNode:
+  enabled: true

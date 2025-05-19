@@ -1,12 +1,20 @@
 Thank you for installing {{ .Chart.Name }} chart, version {{ .Chart.Version }}!
 
 Your zero-cache deployment consists of:
+{{- if .Values.singleNode.enabled }}
+- 1 single-node deployment (simplified deployment for development or small workloads)
+{{- else }}
 - 1 replication-manager node (exactly 1 replica as per Zero architecture)
 - {{ .Values.viewSyncer.replicas }} view-syncer node(s) (horizontally scalable)
+{{- end }}
 
 DEPLOYMENT STATUS:
 You can check the status of your deployment with:
-  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- if .Values.singleNode.enabled }}
+  # Or specifically for the single-node component:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=single-node
+{{- end }}
 
 CONNECTION INFORMATION:
 {{- if .Values.viewSyncer.ingress.enabled }}
@@ -16,11 +24,19 @@ Your zero-cache is available at:
 {{- end }}
 {{- else }}
 Your zero-cache service is available internally at:
+{{- if .Values.singleNode.enabled }}
+  {{ include "zero-cache.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.singleNode.service.port }}
+
+To access it from outside the cluster, you can set up port-forwarding:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "zero-cache.fullname" . }} {{ .Values.singleNode.service.port }}:{{ .Values.singleNode.service.port }}
+Then access: http://localhost:{{ .Values.singleNode.service.port }}
+{{- else }}
   {{ include "zero-cache.fullname" . }}-view-syncer.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.viewSyncer.service.port }}
 
 To access it from outside the cluster, you can set up port-forwarding:
-  kubectl port-forward svc/{{ include "zero-cache.fullname" . }}-view-syncer {{ .Values.viewSyncer.service.port }}:{{ .Values.viewSyncer.service.port }}
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "zero-cache.fullname" . }}-view-syncer {{ .Values.viewSyncer.service.port }}:{{ .Values.viewSyncer.service.port }}
 Then access: http://localhost:{{ .Values.viewSyncer.service.port }}
+{{- end }}
 {{- end }}
 
 FRONTEND CONFIGURATION:
@@ -36,13 +52,19 @@ HEALTH CHECK:
 To verify the server is working properly:
   curl http://SERVER_URL/
 
+{{- if .Values.singleNode.enabled }}
+SINGLE NODE STATUS:
+To check the single node logs:
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=single-node
+{{- else }}
 REPLICATION STATUS:
 To check the replication manager:
-  kubectl logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=replication-manager
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=replication-manager
 
 VIEW SYNCER STATUS:
 To check view syncer pods:
-  kubectl logs statefulset/{{ include "zero-cache.fullname" . }}-view-syncer
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=view-syncer
+{{- end }}
 
 TROUBLESHOOTING:
 1. If connections fail, verify your Postgres connection string and that logical replication is enabled.

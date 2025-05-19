@@ -9,6 +9,10 @@ image:
   tag: ""
   pullPolicy: IfNotPresent
 
+# Image pull secrets for private container registries
+imagePullSecrets: []
+# - name: regcred
+
 # Common environment variables shared between components
 common:
   # Application identifier
@@ -96,8 +100,6 @@ common:
   performance:
     # Interval for SQLite VACUUM operation (hours, unset = no vacuum)
     replicaVacuumIntervalHours: null
-    # Batch size for initial sync operations
-    initialSyncRowBatchSize: 10000
     # Workers for table copying during initial sync
     initialSyncTableCopyWorkers: 5
     # Target row count to keep on the client
@@ -114,8 +116,14 @@ common:
     slowRowThreshold: 2
     # IVM sampling rate (1 in N requests)
     ivmSampling: 5000
-    # OpenTelemetry trace collector URL
-    traceCollector: ""
+    # OpenTelemetry traces
+    otel: 
+      enable: false
+      endpoint: ""
+      headers: ""
+      resourceAttributes: ""
+      nodeResourceDetectors: ""
+
 
   # Rate limiting
   rateLimiting:
@@ -130,18 +138,62 @@ common:
     # Required if you use custom mutators: https://zero.rocicorp.dev/docs/custom-mutators
     pushUrl: ""
 
+## Single Node Configuration
+## This is a simplified deployment option for development or small deployments
+singleNode:
+  # Enable single-node deployment (disables replicationManager and viewSyncer)
+  enabled: false
+
+  # Resource requests and limits
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+  # Persistent storage for SQLite replica
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    storageClass: null
+    annotations: {}
+    allowVolumeExpansion: true
+    retainPolicy: "Delete" # Options: Delete, Retain
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 4848
+    annotations: {}
+
+  # Pod annotations
+  podAnnotations: {}
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity settings
+  affinity: {}
+
+  # Startup probe for slow-starting instances
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+
 ## Replication Manager Configuration
 replicationManager:
   # Replica components will find the replication manager by this service name
   serviceName: zero-cache-replication-manager
-
-  # The replication manager should ALWAYS have exactly 1 replica
-  # This is a requirement of Zero architecture - do not change this value
-  replicas: 1
-
-  # Sync workers should be 0 for the replication manager
-  # This is a requirement of Zero architecture - do not change this value
-  numSyncWorkers: 0
 
   # Resource requests and limits
   resources:
@@ -282,8 +334,28 @@ s3:
   # Enable S3 backup with Litestream (strongly recommended for production)
   enabled: false
   # Access credentials for S3
-  accessKey: ""
-  secretKey: ""
+  accessKey:
+    {}
+    # Direct value for the access key
+    # value: ""
+    # Or, reference a value from a configMap, secret, etc.
+    # valueFrom:
+    #   secretKeyRef:
+    #     name: my-secret
+    #     key: access-key
+    #     optional: false
+    #   # or configMapKeyRef, fieldRef, resourceFieldRef
+  secretKey:
+    {}
+    # Direct value for the secret key
+    # value: ""
+    # Or, reference a value from a configMap, secret, etc.
+    # valueFrom:
+    #   secretKeyRef:
+    #     name: my-secret
+    #     key: secret-key
+    #     optional: false
+    #   # or configMapKeyRef, fieldRef, resourceFieldRef
   # Region setting for S3
   region: us-east-1
   # For S3-compatible storage providers (MinIO, DigitalOcean Spaces, etc.)
@@ -294,11 +366,6 @@ s3:
   bucketName: "zero-cache-backup"
   # Path within bucket for backups
   path: "backup"
-  # Support for external secret providers
-  existingSecret: ""
-  secretKeys:
-    accessKey: "access-key"
-    secretKey: "secret-key"
 
 ## Security Context Configuration
 # Security best practices for containers

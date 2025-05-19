@@ -1,5 +1,4 @@
----
-# PVC for replication-manager (will only be used if replicationManager.persistence.enabled is true)
+{{- if not .Values.singleNode.enabled }}
 {{- if .Values.replicationManager.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -30,7 +29,6 @@ spec:
 {{- end }}
 
 ---
-# PVC for view-syncer (will only be used if viewSyncer.persistence.enabled is true)
 {{- if and .Values.viewSyncer.persistence.enabled (not .Values.viewSyncer.persistence.useVolumeClaimTemplates) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -58,4 +56,22 @@ spec:
   resources:
     requests:
       storage: {{ .Values.viewSyncer.persistence.size }}
+{{- end }}
+{{- else }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "zero-cache.fullname" . }}
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: single-node
+spec:
+  accessModes:
+    - {{ .Values.singleNode.persistence.accessMode }}
+  {{- if .Values.singleNode.persistence.storageClass }}
+  storageClassName: {{ .Values.singleNode.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.singleNode.persistence.size }}
 {{- end }}

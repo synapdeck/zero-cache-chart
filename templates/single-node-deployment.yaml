@@ -1,25 +1,23 @@
-{{- if not .Values.singleNode.enabled }}
+{{- if .Values.singleNode.enabled }}
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
-  name: {{ include "zero-cache.fullname" . }}-replication-manager
+  name: {{ include "zero-cache.fullname" . }}
   labels:
     {{- include "zero-cache.labels" . | nindent 4 }}
-    app.kubernetes.io/component: replication-manager
+    app.kubernetes.io/component: single-node
 spec:
-  serviceName: {{ include "zero-cache.fullname" . }}-replication-manager-headless
-  replicas: 1
-  podManagementPolicy: Parallel
-  selector:
+  replicas: 1  selector:
     matchLabels:
       {{- include "zero-cache.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: replication-manager
-  template:
+      app.kubernetes.io/component: single-node
+  strategy:
+    type: Recreate  template:
     metadata:
       labels:
         {{- include "zero-cache.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: replication-manager
-      {{- with .Values.replicationManager.podAnnotations }}
+        app.kubernetes.io/component: single-node
+      {{- with .Values.singleNode.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -38,25 +36,25 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: change-stream
-              containerPort: {{ .Values.replicationManager.service.port }}
+            - name: http
+              containerPort: {{ .Values.singleNode.service.port }}
               protocol: TCP
           livenessProbe:
             httpGet:
               path: /keepalive
-              port: {{ .Values.replicationManager.service.port }}
+              port: {{ .Values.singleNode.service.port }}
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /
-              port: {{ .Values.replicationManager.service.port }}
+              port: {{ .Values.singleNode.service.port }}
             initialDelaySeconds: 5
             periodSeconds: 10
           env:
             - name: ZERO_PORT
-              value: "{{ .Values.replicationManager.service.port }}"
+              value: "{{ .Values.singleNode.service.port }}"
             - name: ZERO_APP_ID
               value: "{{ .Values.common.appId }}"
             {{- if .Values.common.appPublications }}
@@ -66,10 +64,8 @@ spec:
             - name: ZERO_REPLICA_FILE
               value: "{{ .Values.common.replicaFile }}"
             - name: ZERO_AUTO_RESET
-              value: "{{ .Values.common.autoReset }}"
-            - name: ZERO_NUM_SYNC_WORKERS
-              value: "0"  # Replication manager should have no sync workers
-            {{- if or .Values.common.auth.secret.value .Values.common.auth.secret.valueFrom }}
+              value: "{{ .Values.common.autoReset }}"            - name: ZERO_CHANGE_STREAMER_MODE
+              value: "dedicated"            {{- if or .Values.common.auth.secret.value .Values.common.auth.secret.valueFrom }}
             - name: ZERO_AUTH_SECRET
               {{- if .Values.common.auth.secret.value }}
               valueFrom:
@@ -101,15 +97,13 @@ spec:
               valueFrom:
                 {{ toYaml .Values.common.auth.jwksUrl.valueFrom | indent 12 }}
               {{- end }}
-            {{- end }}
-            {{- if .Values.common.adminPassword }}
+            {{- end }}            {{- if .Values.common.adminPassword }}
             - name: ZERO_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-admin
                   key: admin-password
-            {{- end }}
-            - name: ZERO_UPSTREAM_DB
+            {{- end }}            - name: ZERO_UPSTREAM_DB
               valueFrom:
                 secretKeyRef:
                   name: {{ include "zero-cache.fullname" . }}-db
@@ -133,8 +127,7 @@ spec:
                   key: change-db
             {{- end }}
             - name: ZERO_CHANGE_MAX_CONNS
-              value: "{{ .Values.common.database.changeMaxConns }}"
-            {{- if .Values.common.litestream.backupUrl }}
+              value: "{{ .Values.common.database.changeMaxConns }}"            {{- if .Values.common.litestream.backupUrl }}
             - name: ZERO_LITESTREAM_BACKUP_URL
               value: "{{ .Values.common.litestream.backupUrl }}"
             {{- if .Values.s3.enabled }}
@@ -179,16 +172,14 @@ spec:
               value: "{{ .Values.common.litestream.restoreParallelism }}"
             - name: ZERO_LITESTREAM_LOG_LEVEL
               value: "{{ .Values.common.litestream.logLevel }}"
-            {{- end }}
-            {{- if .Values.common.performance.replicaVacuumIntervalHours }}
+            {{- end }}            {{- if .Values.common.performance.replicaVacuumIntervalHours }}
             - name: ZERO_REPLICA_VACUUM_INTERVAL_HOURS
               value: "{{ .Values.common.performance.replicaVacuumIntervalHours }}"
             {{- end }}
             - name: ZERO_INITIAL_SYNC_TABLE_COPY_WORKERS
               value: "{{ .Values.common.performance.initialSyncTableCopyWorkers }}"
             - name: ZERO_TARGET_CLIENT_ROW_COUNT
-              value: "{{ .Values.common.performance.targetClientRowCount }}"
-            - name: ZERO_LOG_FORMAT
+              value: "{{ .Values.common.performance.targetClientRowCount }}"            - name: ZERO_LOG_FORMAT
               value: "{{ .Values.common.logging.format }}"
             - name: ZERO_LOG_LEVEL
               value: "{{ .Values.common.logging.level }}"
@@ -207,46 +198,38 @@ spec:
               value: "{{ .Values.common.logging.otel.resourceAttributes }}"
             - name: OTEL_NODE_RESOURCE_DETECTORS
               value: "{{ .Values.common.logging.otel.nodeResourceDetectors }}"
-            {{- end }}
-            {{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
+            {{- end }}            {{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
             - name: ZERO_PER_USER_MUTATION_LIMIT_MAX
               value: "{{ .Values.common.rateLimiting.perUserMutationLimitMax }}"
             {{- end }}
             - name: ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS
-              value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"
-            {{- if .Values.common.customMutators.pushUrl }}
+              value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"            {{- if .Values.common.customMutators.pushUrl }}
             - name: ZERO_PUSH_URL
               value: "{{ .Values.common.customMutators.pushUrl }}"
             {{- end }}
           resources:
-            {{- toYaml .Values.replicationManager.resources | nindent 12 }}
+            {{- toYaml .Values.singleNode.resources | nindent 12 }}
           volumeMounts:
             - name: data
               mountPath: /data
-      {{- with .Values.replicationManager.nodeSelector }}
+      {{- with .Values.singleNode.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.replicationManager.affinity }}
+      {{- with .Values.singleNode.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.replicationManager.tolerations }}
+      {{- with .Values.singleNode.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  {{- if .Values.replicationManager.persistence.enabled }}
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes:
-          - {{ .Values.replicationManager.persistence.accessMode }}
-        {{- if .Values.replicationManager.persistence.storageClass }}
-        storageClassName: {{ .Values.replicationManager.persistence.storageClass }}
+      volumes:
+        - name: data
+        {{- if .Values.singleNode.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "zero-cache.fullname" . }}
+        {{- else }}
+          emptyDir: {}
         {{- end }}
-        resources:
-          requests:
-            storage: {{ .Values.replicationManager.persistence.size }}
-  {{- end }}
 {{- end }}
