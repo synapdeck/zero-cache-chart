@@ -135,8 +135,6 @@ spec:
             {{- end }}
             - name: ZERO_CVR_MAX_CONNS
               value: "{{ .Values.common.database.cvr.maxConns }}"
-            - name: ZERO_CHANGE_MAX_CONNS
-              value: "{{ .Values.common.database.change.maxConns }}"
             {{- if or .Values.common.database.change.url.value .Values.common.database.change.url.valueFrom }}
             - name: ZERO_CHANGE_DB
               {{- if .Values.common.database.change.url.valueFrom }}
