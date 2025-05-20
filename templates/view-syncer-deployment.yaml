@@ -92,7 +92,7 @@ spec:
                   key: auth-secret
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.common.auth.secret.valueFrom | indent 16 }}
+                {{ toYaml .Values.common.auth.secret.valueFrom | nindent 16 }}
               {{- end }}
             {{- end }}
             {{- if or .Values.common.auth.jwk.value .Values.common.auth.jwk.valueFrom }}
@@ -104,7 +104,7 @@ spec:
                   key: auth-jwk
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.common.auth.jwk.valueFrom | indent 16 }}
+                {{ toYaml .Values.common.auth.jwk.valueFrom | nindent 16 }}
               {{- end }}
             {{- end }}
             {{- if or .Values.common.auth.jwksUrl.value .Values.common.auth.jwksUrl.valueFrom }}
@@ -113,7 +113,7 @@ spec:
               value: "{{ .Values.common.auth.jwksUrl.value }}"
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.common.auth.jwksUrl.valueFrom | indent 16 }}
+                {{ toYaml .Values.common.auth.jwksUrl.valueFrom | nindent 16 }}
               {{- end }}
             {{- end }}
             {{- if .Values.common.adminPassword }}
@@ -173,7 +173,7 @@ spec:
                   key: access-key
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.s3.accessKey.valueFrom | indent 16 }}
+                {{ toYaml .Values.s3.accessKey.valueFrom | nindent 16 }}
               {{- end }}
             {{- end }}
             {{- if or .Values.s3.secretKey.value .Values.s3.secretKey.valueFrom }}
@@ -185,7 +185,7 @@ spec:
                   key: secret-key
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.s3.secretKey.valueFrom | indent 16 }}
+                {{ toYaml .Values.s3.secretKey.valueFrom | nindent 16 }}
               {{- end }}
             {{- end }}
             - name: AWS_REGION

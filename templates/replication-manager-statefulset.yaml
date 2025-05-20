@@ -99,7 +99,7 @@ spec:
               value: "{{ .Values.common.auth.jwksUrl.value }}"
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.common.auth.jwksUrl.valueFrom | indent 12 }}
+                {{ toYaml .Values.common.auth.jwksUrl.valueFrom | nindent 12 }}
               {{- end }}
             {{- end }}
             {{- if .Values.common.adminPassword }}
@@ -162,7 +162,7 @@ spec:
                   key: access-key
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.s3.accessKey.valueFrom | indent 12 }}
+                {{ toYaml .Values.s3.accessKey.valueFrom | nindent 12 }}
               {{- end }}
             {{- end }}
             {{- if or .Values.s3.secretKey.value .Values.s3.secretKey.valueFrom }}
@@ -174,7 +174,7 @@ spec:
                   key: secret-key
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.s3.secretKey.valueFrom | indent 12 }}
+                {{ toYaml .Values.s3.secretKey.valueFrom | nindent 12 }}
               {{- end }}
             {{- end }}
             - name: AWS_REGION
