@@ -152,6 +152,8 @@ spec:
             {{- if .Values.common.litestream.backupUrl }}
             - name: ZERO_LITESTREAM_BACKUP_URL
               value: "{{ .Values.common.litestream.backupUrl }}"
+            - name: ZERO_LITESTREAM_CONFIG_PATH
+              value: "/etc/litestream/litestream.yml"
             {{- if .Values.s3.enabled }}
             {{- if or .Values.s3.accessKey.value .Values.s3.accessKey.valueFrom }}
             - name: AWS_ACCESS_KEY_ID

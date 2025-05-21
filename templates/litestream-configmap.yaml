@@ -15,16 +15,18 @@ data:
         watermark-column: stateVersion
         replicas:
           {{- if .Values.s3.enabled }}
-          - url: s3://${ZERO_LITESTREAM_BUCKET}/${ZERO_APP_ID}
+          - url: s3://{{ .Values.s3.bucket }}/{{ .Values.s3.path }}/${ZERO_APP_ID}
             retention: ${ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_MINUTES}m
             retention-check-interval: 1h
             sync-interval: ${ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES}m
             type: s3
             access-key-id: ${AWS_ACCESS_KEY_ID}
             secret-access-key: ${AWS_SECRET_ACCESS_KEY}
-            region: ${AWS_REGION}
+            {{- if .Values.s3.region }}
+            region: {{ .Values.s3.region }}
+            {{- end }}
             {{- if .Values.s3.endpoint }}
-            endpoint: ${AWS_ENDPOINT_URL}
+            endpoint: {{ .Values.s3.endpoint }}
             {{- end }}
             {{- if .Values.s3.forcePathStyle }}
             force-path-style: {{ .Values.s3.forcePathStyle }}
