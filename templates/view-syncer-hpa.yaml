@@ -9,7 +9,7 @@ metadata:
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
-    kind: StatefulSet
+    kind: Deployment
     name: {{ include "zero-cache.fullname" . }}-view-syncer
   minReplicas: {{ .Values.viewSyncer.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.viewSyncer.autoscaling.maxReplicas }}

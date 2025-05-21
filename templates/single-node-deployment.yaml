@@ -240,6 +240,8 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: tmp
+              mountPath: /tmp
       {{- with .Values.singleNode.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -260,4 +262,6 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        - name: tmp
+          emptyDir: {}
 {{- end }}
