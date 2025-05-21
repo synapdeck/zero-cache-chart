@@ -1,6 +1,6 @@
 {{ if not .Values.singleNode.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "zero-cache.fullname" . }}-view-syncer
   labels:
@@ -12,11 +12,7 @@ spec:
     matchLabels:
       {{- include "zero-cache.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: view-syncer
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 1
+  serviceName: {{ include "zero-cache.fullname" . }}-view-syncer
   template:
     metadata:
       labels:
@@ -268,11 +264,8 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{- if not .Values.viewSyncer.persistence.enabled }}
         - name: data
-        {{- if .Values.viewSyncer.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: {{ include "zero-cache.fullname" . }}-view-syncer
-        {{- else }}
           emptyDir: {}
         {{- end }}
         - name: litestream-config
@@ -280,4 +273,28 @@ spec:
             name: {{ include "zero-cache.fullname" . }}-litestream-config
         - name: tmp
           emptyDir: {}
+  {{- if .Values.viewSyncer.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "zero-cache.labels" . | nindent 10 }}
+          app.kubernetes.io/component: view-syncer
+        {{- with .Values.viewSyncer.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.viewSyncer.persistence.accessMode }}
+        {{- if .Values.viewSyncer.persistence.storageClass }}
+        storageClassName: {{ .Values.viewSyncer.persistence.storageClass }}
+        {{- end }}
+        {{- if .Values.viewSyncer.persistence.allowVolumeExpansion }}
+        volumeMode: Filesystem
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.viewSyncer.persistence.size }}
+  {{- end }}
 {{- end }}
