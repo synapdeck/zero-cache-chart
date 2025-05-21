@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zero-cache.fullname" . }}-litestream-config
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: litestream-config
+data:
+  litestream.yml: |
+    dbs:
+      - path: ${ZERO_REPLICA_FILE}
+        min-checkpoint-page-count: ${ZERO_LITESTREAM_MIN_CHECKPOINT_PAGE_COUNT}
+        max-checkpoint-page-count: ${ZERO_LITESTREAM_MAX_CHECKPOINT_PAGE_COUNT}
+        watermark-table: _zero.replicationState
+        watermark-column: stateVersion
+        replicas:
+          {{- if .Values.s3.enabled }}
+          - url: s3://${ZERO_LITESTREAM_BUCKET}/${ZERO_APP_ID}
+            retention: ${ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_MINUTES}m
+            retention-check-interval: 1h
+            sync-interval: ${ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES}m
+            type: s3
+            access-key-id: ${AWS_ACCESS_KEY_ID}
+            secret-access-key: ${AWS_SECRET_ACCESS_KEY}
+            region: ${AWS_REGION}
+            {{- if .Values.s3.endpoint }}
+            endpoint: ${AWS_ENDPOINT_URL}
+            {{- end }}
+            {{- if .Values.s3.forcePathStyle }}
+            force-path-style: {{ .Values.s3.forcePathStyle }}
+            {{- end }}
+          {{- else }}
+          - url: ${ZERO_LITESTREAM_BACKUP_URL}
+            retention: ${ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_MINUTES}m
+            retention-check-interval: 1h
+            sync-interval: ${ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES}m
+          {{- end }}
+
+    logging:
+      level: ${ZERO_LITESTREAM_LOG_LEVEL}
+      type: ${ZERO_LOG_FORMAT}
+
+    addr: localhost:${LITESTREAM_PORT}
