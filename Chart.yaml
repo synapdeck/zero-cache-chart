@@ -16,4 +16,4 @@ name: zero-cache
 sources:
 - https://github.com/rocicorp/zero
 type: application
-version: 0.20.2025051800
+version: 0.20.2025052100
