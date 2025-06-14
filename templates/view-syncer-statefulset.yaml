@@ -30,6 +30,13 @@ spec:
       serviceAccountName: {{ include "zero-cache.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | default dict | nindent 8 }}
+      initContainers:
+        - name: wait-for-replication-manager
+          image: bitnami/kubectl:latest
+          args:
+            - wait
+            - --for jsonpath='{.status.readyReplicas}'=1
+            - statefulset/{{ include "zero-cache.fullname" . }}-replication-manager
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
