@@ -410,15 +410,15 @@ def update_main_branch(
         print(f"Main branch already at latest version {latest_version}")
         return None
 
-    # Check compatibility between versions (using Version objects directly)
-    if latest_version.is_compatible(current_version):
-        print(
-            f"Versions are compatible according to semver rules: {latest_version} is compatible with {current_version}"
-        )
+    # Main branch accepts all updates regardless of compatibility
+    # Just inform about major/minor version changes for awareness
+    latest_mm = f"{latest_version.major}.{latest_version.minor}"
+    current_mm = f"{current_version.major}.{current_version.minor}"
+    
+    if latest_mm != current_mm:
+        print(f"Note: Updating across different major.minor versions: {current_mm} → {latest_mm}")
     else:
-        print(
-            f"Versions are NOT compatible according to semver rules: {latest_version} is not compatible with {current_version}"
-        )
+        print(f"Updating within same major.minor version: {current_mm}")
 
     if latest_version.major > current_version.major:
         print(f"Major version bump detected: {current_version} → {latest_version}")
@@ -601,14 +601,16 @@ def update_version_branches(
         if latest_version > current_version:
             print(f"Updating {branch} from {current_version} to {latest_version}")
 
-            # Check if this is a compatible update
-            if latest_version.is_compatible(current_version):
-                print("  This is a compatible update according to semver rules")
-            else:
-                print(
-                    "  This is NOT a compatible update according to semver rules - potential breaking changes"
-                )
+            # For version branches, ensure we only update within the same major.minor
+            # This is what ^${currentVersion} would mean in semver
+            latest_mm = f"{latest_version.major}.{latest_version.minor}"
+            current_mm = f"{current_version.major}.{current_version.minor}"
+            
+            if latest_mm != current_mm:
+                print(f"  Cannot update across different major.minor versions: {current_mm} → {latest_mm}")
                 continue
+                
+            print(f"  Updating within same major.minor version: {current_mm}")
 
             # Update Chart.yaml
             if not update_chart_version(chart_path, latest_version):
