@@ -1,5 +1,5 @@
 apiVersion: v2
-appVersion: 0.24.2025091100
+appVersion: 0.24.2025091200
 description: A Helm chart for deploying zero-cache, a horizontally scalable service
   that maintains a SQLite replica of your Postgres database for Zero
 home: https://zero.rocicorp.dev/
