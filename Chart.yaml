@@ -1,5 +1,5 @@
 apiVersion: v2
-appVersion: 0.25.0-canary.3
+appVersion: 0.25.0-canary.4
 description: A Helm chart for deploying zero-cache, a horizontally scalable service
   that maintains a SQLite replica of your Postgres database for Zero
 home: https://zero.rocicorp.dev/
