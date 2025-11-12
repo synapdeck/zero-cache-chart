@@ -17,4 +17,4 @@ sources:
 - https://github.com/rocicorp/zero
 - https://github.com/synapdeck/zero-cache-chart
 type: application
-version: 0.24.3000000001-canary.5
+version: 0.24.3000000001-canary.6
