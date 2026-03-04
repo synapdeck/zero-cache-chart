@@ -1,4 +1,4 @@
-{{ if not .Values.singleNode.enabled }}
+{{- if not .Values.singleNode.enabled }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -32,11 +32,24 @@ spec:
         {{- toYaml .Values.podSecurityContext | default dict | nindent 8 }}
       initContainers:
         - name: wait-for-replication-manager
-          image: bitnami/kubectl:latest
-          args:
-            - wait
-            - --for jsonpath='{.status.readyReplicas}'=1
-            - statefulset/{{ include "zero-cache.fullname" . }}-replication-manager
+          image: busybox:1.37
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - sh
+            - -c
+            - |
+              until wget -q --spider http://{{ include "zero-cache.fullname" . }}-replication-manager:{{ .Values.replicationManager.service.port }}/keepalive 2>/dev/null; do
+                echo "Waiting for replication manager..."
+                sleep 5
+              done
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -305,9 +318,7 @@ spec:
         {{- if .Values.viewSyncer.persistence.storageClass }}
         storageClassName: {{ .Values.viewSyncer.persistence.storageClass }}
         {{- end }}
-        {{- if .Values.viewSyncer.persistence.allowVolumeExpansion }}
         volumeMode: Filesystem
-        {{- end }}
         resources:
           requests:
             storage: {{ .Values.viewSyncer.persistence.size }}

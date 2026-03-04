@@ -91,7 +91,7 @@ spec:
                   key: auth-secret
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.common.auth.secret.valueFrom | indent 16 }}
+                {{ toYaml .Values.common.auth.secret.valueFrom | nindent 16 }}
               {{- end }}
             {{- end }}
             {{- if or .Values.common.auth.jwk.value .Values.common.auth.jwk.valueFrom }}
@@ -103,7 +103,7 @@ spec:
                   key: auth-jwk
               {{- else }}
               valueFrom:
-                {{ toYaml .Values.common.auth.jwk.valueFrom | indent 16 }}
+                {{ toYaml .Values.common.auth.jwk.valueFrom | nindent 16 }}
               {{- end }}
             {{- end }}
             {{- if or .Values.common.auth.jwksUrl.value .Values.common.auth.jwksUrl.valueFrom }}
