@@ -28,14 +28,16 @@ metadata:
   labels:
     {{- include "zero-cache.labels" . | nindent 4 }}
     app.kubernetes.io/component: view-syncer
+  {{- with .Values.viewSyncer.service.annotations }}
   annotations:
-    service.kubernetes.io/session-affinity: "ClientIP"
-    service.kubernetes.io/session-affinity-timeout: "3600"
-    {{- with .Values.viewSyncer.service.annotations }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
+  {{- end }}
 spec:
   type: {{ .Values.viewSyncer.service.type }}
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
   ports:
     - port: {{ .Values.viewSyncer.service.port }}
       targetPort: http

@@ -12,7 +12,7 @@ spec:
     matchLabels:
       {{- include "zero-cache.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: view-syncer
-  serviceName: {{ include "zero-cache.fullname" . }}-view-syncer
+  serviceName: {{ include "zero-cache.fullname" . }}-view-syncer-headless
   template:
     metadata:
       labels:
