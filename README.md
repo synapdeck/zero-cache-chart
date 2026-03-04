@@ -1,89 +1,116 @@
-# Zero-Cache
+# Zero-Cache Helm Chart
 
-A Helm chart for deploying zero-cache, a horizontally scalable service that maintains a SQLite replica of your Postgres database for Zero.
+A Helm chart for deploying [zero-cache](https://zero.rocicorp.dev/), a horizontally scalable service that maintains a SQLite replica of your Postgres database for [Zero](https://zero.rocicorp.dev/).
 
-## Version Management
+## Installing the Chart
 
-This repository uses an automated GitHub Actions workflow to manage Docker image versions. Here's how it works:
+The chart is published to the GitHub Container Registry as an OCI artifact:
 
-### Automated Version Management
+```bash
+# Install
+helm install zero-cache oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
 
-The system monitors the `rocicorp/zero` Docker image for new versions and updates the Helm chart accordingly:
+# Upgrade
+helm upgrade zero-cache oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
 
-1. **Main Branch Updates**:
+# Pull without installing
+helm pull oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
+```
 
-   - When a new version of the Docker image is released, changes are committed directly to the main branch
-   - This ensures the main branch always points to the latest version
-   - A version tag (e.g., `v0.20.2025051800`) is created for each update
+## Architecture
 
-2. **Version Branch Management**:
-   - For each major.minor version (e.g., `v0.20`), a dedicated branch is maintained
-   - When a new version is released with a new major.minor (e.g., `0.21.yyyymmddxx`), a new branch `v0.21` is automatically created
-   - Each version branch only receives updates to its specific major.minor version
-   - Branch-specific version tags (e.g., `v0.20/0.20.2025051800`) are created for each update
+The chart supports two deployment modes:
 
-### How It Works
+### Single-Node Mode (`singleNode.enabled: true`)
 
-The system runs on a schedule (every hour) and:
+A single Deployment running both the change streamer and view syncer. Suitable for development or small workloads. Uses a standalone PVC for data persistence.
 
-1. Fetches all available Docker image versions
-2. Updates the main branch with the latest version via direct commit
-3. Updates both the `appVersion` and chart `version` in Chart.yaml
-4. Creates a version tag for each update
-5. Packages and pushes the Helm chart to the GitHub Container Registry (ghcr.io)
-6. Creates new version branches for new major.minor versions
-7. Updates existing version branches with the latest build for their specific major.minor version
+### Multi-Node Mode (default)
 
-This approach ensures that:
+- **Replication Manager** — a single-replica StatefulSet that streams changes from Postgres
+- **View Syncers** — a horizontally scalable StatefulSet that serves client queries (supports HPA)
 
-- The main branch always gets the latest version
-- Version tags provide an easy way to reference specific versions
-- Helm charts are published to the OCI registry (ghcr.io) for easy consumption
-- Chart version always matches the Docker image version for consistency
-- A new version branch is created for each new major.minor version
-- Existing version branches only receive build/date updates to their specific major.minor version
-- Consumers can easily select specific versions from the OCI registry
-
-## Manual Triggering
-
-You can manually trigger the version check by going to the Actions tab and running the "Docker Image Version Management" workflow.
+View syncers wait for the replication manager to be healthy before starting.
 
 ## Configuration
 
-The workflow is defined in `.github/workflows/version-management.yml` and monitors the Docker image specified in the workflow configuration.
+See [`values.yaml`](values.yaml) for all configurable values with documentation. Key settings:
 
-## Using the Helm Chart from OCI Registry
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `singleNode.enabled` | Use single-node deployment mode | `false` |
+| `common.database.upstream.url` | Postgres connection string (required) | `{}` |
+| `common.auth.secret` / `jwk` / `jwksUrl` | JWT authentication config | `{}` |
+| `s3.enabled` | Enable S3-backed Litestream replication | `false` |
+| `viewSyncer.replicas` | Number of view syncer replicas | `2` |
+| `viewSyncer.autoscaling.enabled` | Enable HPA for view syncers | `false` |
 
-The Helm chart is published to the GitHub Container Registry (ghcr.io) as an OCI artifact and can be used directly with Helm:
+## Automated Version Management
+
+A GitHub Actions workflow (`version-management.yml`) monitors the `rocicorp/zero` Docker image and updates the chart automatically:
+
+1. Fetches all available Docker image versions from Docker Hub
+2. Updates Chart.yaml `appVersion` and `version` on the main branch
+3. Creates version tags (e.g., `v0.26.1-canary.4`)
+4. Maintains major.minor branches (e.g., `v0.26`) with branch-specific tags
+5. Packages and pushes the Helm chart to `ghcr.io`
+6. Prunes untagged OCI artifacts to keep the registry clean
+
+The workflow runs hourly and can be manually triggered from the Actions tab.
+
+## Development
+
+### Prerequisites
+
+- [Nix](https://nixos.org/) with flakes enabled
+
+### Setup
 
 ```bash
-# Pull a specific chart version
-helm pull oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
+# Enter the development shell (provides Python 3.13, helm, kubeconform, helm-docs, oras, uv)
+nix develop
 
-# Install the chart
-helm install zero-cache oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
-
-# Upgrade an existing installation
-helm upgrade zero-cache oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --version VERSION
+# Or with direnv
+direnv allow
 ```
 
-Replace:
+### CLI Tool
 
-- `VERSION` with the desired chart version
-
-### Available Versions
-
-The OCI registry maintains multiple versions of the chart:
-
-- Latest version from the `main` branch
-- Specific versions tagged with the appVersion (e.g., `0.20.2025051800`)
-- Branch-specific versions for each major.minor version (e.g., `v0.20/0.20.2025051800`)
-
-### Viewing Available Charts
-
-To view available chart versions:
+The `zero-cache-chart` CLI manages version tracking and OCI publishing:
 
 ```bash
-# List all versions of the chart
-helm search repo oci://ghcr.io/synapdeck/zero-cache-chart/zero-cache --versions
+# Update chart versions from Docker Hub
+zero-cache-chart update \
+  --docker-image rocicorp/zero \
+  --oci-registry ghcr.io \
+  --oci-repo synapdeck/zero-cache-chart/zero-cache
+
+# Prune untagged OCI artifacts
+zero-cache-chart prune \
+  --github-repo synapdeck/zero-cache-chart \
+  --package-name zero-cache-chart/zero-cache
+
+# Dry run (no changes)
+zero-cache-chart update --dry-run ...
+```
+
+### Project Structure
+
+```
+src/zero_cache_chart/
+├── cli.py        # Click CLI commands (update, prune)
+├── chart.py      # Chart.yaml read/write
+├── docker.py     # Docker Hub API client
+├── git.py        # Git operations
+├── oci.py        # OCI registry operations
+├── types.py      # Shared types and subprocess helpers
+└── versions.py   # Version parsing, comparison, branch logic
+tests/            # pytest test suite
+templates/        # Helm chart templates
+```
+
+### Running Tests
+
+```bash
+pytest
 ```
