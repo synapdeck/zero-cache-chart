@@ -1,0 +1,23 @@
+{{- if and .Values.singleNode.enabled .Values.singleNode.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "zero-cache.fullname" . }}
+  labels:
+    {{- include "zero-cache.labels" . | nindent 4 }}
+    app.kubernetes.io/component: single-node
+  {{- with .Values.singleNode.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.singleNode.persistence.accessMode }}
+  {{- if .Values.singleNode.persistence.storageClass }}
+  storageClassName: {{ .Values.singleNode.persistence.storageClass }}
+  {{- end }}
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: {{ .Values.singleNode.persistence.size }}
+{{- end }}

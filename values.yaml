@@ -226,9 +226,6 @@ singleNode:
 
 ## Replication Manager Configuration
 replicationManager:
-  # Replica components will find the replication manager by this service name
-  serviceName: zero-cache-replication-manager
-
   # Resource requests and limits
   resources:
     requests:

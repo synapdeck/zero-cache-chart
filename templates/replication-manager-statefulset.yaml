@@ -286,6 +286,13 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: data
+        labels:
+          {{- include "zero-cache.labels" . | nindent 10 }}
+          app.kubernetes.io/component: replication-manager
+        {{- with .Values.replicationManager.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       spec:
         accessModes:
           - {{ .Values.replicationManager.persistence.accessMode }}
