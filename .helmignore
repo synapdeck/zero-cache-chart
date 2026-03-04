@@ -44,6 +44,12 @@ bower_components/
 
 # Specific project files
 version_manager.py
-mise.toml
 pyproject.toml
 uv.lock
+flake.nix
+flake.lock
+.envrc
+.direnv/
+result
+src/
+tests/

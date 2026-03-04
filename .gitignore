@@ -1,3 +1,7 @@
+# Nix / direnv
+.direnv/
+result
+
 # Helm chart specific
 /*.tgz
 /charts/*.tgz
