@@ -253,6 +253,11 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            {{- if or .Values.s3.enabled .Values.common.litestream.backupUrl }}
+            - name: litestream-config
+              mountPath: /etc/litestream
+              readOnly: true
+            {{- end }}
             - name: tmp
               mountPath: /tmp
       {{- with .Values.singleNode.nodeSelector }}
@@ -275,6 +280,11 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if or .Values.s3.enabled .Values.common.litestream.backupUrl }}
+        - name: litestream-config
+          configMap:
+            name: {{ include "zero-cache.fullname" . }}-litestream-config
+        {{- end }}
         - name: tmp
           emptyDir: {}
 {{- end }}

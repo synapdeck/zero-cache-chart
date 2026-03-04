@@ -1,3 +1,4 @@
+{{- if or .Values.s3.enabled .Values.common.litestream.backupUrl }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,7 +17,7 @@ data:
         replicas:
           {{- if .Values.s3.enabled }}
           - url: s3://{{ .Values.s3.bucketName }}/{{ .Values.s3.path }}/${ZERO_APP_ID}
-            retention: ${ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_MINUTES}m
+            retention: ${ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_HOURS}h
             retention-check-interval: 1h
             sync-interval: ${ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES}m
             type: s3
@@ -33,7 +34,7 @@ data:
             {{- end }}
           {{- else }}
           - url: ${ZERO_LITESTREAM_BACKUP_URL}
-            retention: ${ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_MINUTES}m
+            retention: ${ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_HOURS}h
             retention-check-interval: 1h
             sync-interval: ${ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES}m
           {{- end }}
@@ -41,5 +42,4 @@ data:
     logging:
       level: ${ZERO_LITESTREAM_LOG_LEVEL}
       type: ${ZERO_LOG_FORMAT}
-
-    addr: localhost:${LITESTREAM_PORT}
+{{- end }}

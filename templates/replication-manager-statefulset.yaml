@@ -166,8 +166,10 @@ spec:
             - name: ZERO_LITESTREAM_BACKUP_URL
               value: "{{ .Values.common.litestream.backupUrl }}"
             {{- end }}
+            {{- if or .Values.s3.enabled .Values.common.litestream.backupUrl }}
             - name: ZERO_LITESTREAM_CONFIG_PATH
               value: "/etc/litestream/litestream.yml"
+            {{- end }}
             {{- if .Values.s3.enabled }}
             {{- if or .Values.s3.accessKey.value .Values.s3.accessKey.valueFrom }}
             - name: AWS_ACCESS_KEY_ID
@@ -253,9 +255,11 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            {{- if or .Values.s3.enabled .Values.common.litestream.backupUrl }}
             - name: litestream-config
               mountPath: /etc/litestream
               readOnly: true
+            {{- end }}
             - name: tmp
               mountPath: /tmp
       {{- with .Values.replicationManager.nodeSelector }}
@@ -263,9 +267,11 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{- if or .Values.s3.enabled .Values.common.litestream.backupUrl }}
         - name: litestream-config
           configMap:
             name: {{ include "zero-cache.fullname" . }}-litestream-config
+        {{- end }}
         - name: tmp
           emptyDir: {}
       {{- with .Values.replicationManager.affinity }}
