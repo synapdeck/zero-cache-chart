@@ -50,10 +50,23 @@ spec:
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
-              path: /
+              path: /keepalive
               port: {{ .Values.replicationManager.service.port }}
             initialDelaySeconds: 5
             periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+          {{- if .Values.replicationManager.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /keepalive
+              port: {{ .Values.replicationManager.service.port }}
+            initialDelaySeconds: {{ .Values.replicationManager.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.replicationManager.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.replicationManager.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.replicationManager.startupProbe.failureThreshold }}
+            successThreshold: {{ .Values.replicationManager.startupProbe.successThreshold }}
+          {{- end }}
           env:
             - name: ZERO_PORT
               value: "{{ .Values.replicationManager.service.port }}"

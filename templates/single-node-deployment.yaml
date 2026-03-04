@@ -50,10 +50,23 @@ spec:
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
-              path: /
+              path: /keepalive
               port: {{ .Values.singleNode.service.port }}
             initialDelaySeconds: 5
             periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+          {{- if .Values.singleNode.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /keepalive
+              port: {{ .Values.singleNode.service.port }}
+            initialDelaySeconds: {{ .Values.singleNode.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.singleNode.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.singleNode.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.singleNode.startupProbe.failureThreshold }}
+            successThreshold: {{ .Values.singleNode.startupProbe.successThreshold }}
+          {{- end }}
           env:
             - name: ZERO_PORT
               value: "{{ .Values.singleNode.service.port }}"

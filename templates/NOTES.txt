@@ -50,7 +50,7 @@ const zero = new Zero({
 
 HEALTH CHECK:
 To verify the server is working properly:
-  curl http://SERVER_URL/
+  curl http://SERVER_URL/keepalive
 
 {{- if .Values.singleNode.enabled }}
 SINGLE NODE STATUS:

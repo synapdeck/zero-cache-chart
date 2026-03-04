@@ -56,14 +56,16 @@ spec:
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
-              path: /
+              path: /keepalive
               port: {{ .Values.viewSyncer.service.port }}
             initialDelaySeconds: 5
             periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
           {{- if .Values.viewSyncer.startupProbe.enabled }}
           startupProbe:
             httpGet:
-              path: /
+              path: /keepalive
               port: {{ .Values.viewSyncer.service.port }}
             initialDelaySeconds: {{ .Values.viewSyncer.startupProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.viewSyncer.startupProbe.periodSeconds }}
