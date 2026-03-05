@@ -63,8 +63,17 @@ common:
       #     optional: false
       #   # or secretKeyRef, fieldRef, resourceFieldRef
 
-  # Admin password for management endpoints
-  adminPassword: ""
+  # Admin password for management endpoints (inspector/statz)
+  adminPassword: {}
+    # Direct value for the admin password
+    # value: "your-admin-password"
+    # Or, reference a value from a configMap, secret, etc.
+    # valueFrom:
+    #   secretKeyRef:
+    #     name: my-admin-secret
+    #     key: admin-password
+    #     optional: false
+    #   # or configMapKeyRef, fieldRef, resourceFieldRef
 
   # Database configuration
   database:

@@ -192,12 +192,17 @@ Authentication environment variables (deprecated >=0.25 but still functional).
 Admin password environment variable.
 */}}
 {{- define "zero-cache.env.admin" -}}
-{{- if .Values.common.adminPassword }}
+{{- if or .Values.common.adminPassword.value .Values.common.adminPassword.valueFrom }}
 - name: ZERO_ADMIN_PASSWORD
+  {{- if .Values.common.adminPassword.valueFrom }}
+  valueFrom:
+    {{ toYaml .Values.common.adminPassword.valueFrom | nindent 4 }}
+  {{- else }}
   valueFrom:
     secretKeyRef:
       name: {{ include "zero-cache.fullname" . }}-admin
       key: admin-password
+  {{- end }}
 {{- end }}
 {{- end -}}
 
