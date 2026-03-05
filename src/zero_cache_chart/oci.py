@@ -131,3 +131,23 @@ def prune_untagged(
                 count += 1
 
     return count
+
+
+def delete_all_versions(
+    org: str,
+    package_name: str,
+    *,
+    dry_run: bool = False,
+) -> int:
+    """Delete ALL package versions (tagged and untagged). One-time cleanup."""
+    versions = list_package_versions(org, package_name)
+    count = 0
+
+    for ver in versions:
+        if dry_run:
+            count += 1
+        else:
+            delete_package_version(org, package_name, ver["id"])
+            count += 1
+
+    return count
