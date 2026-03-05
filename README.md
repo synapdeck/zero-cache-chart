@@ -32,6 +32,15 @@ A single Deployment running both the change streamer and view syncer. Suitable f
 
 View syncers wait for the replication manager to be healthy before starting.
 
+## Version-Aware Templates
+
+The chart uses `semverCompare` to emit the correct environment variable names based on the zero-cache version (`image.tag` or `appVersion`):
+
+- `ZERO_MUTATE_URL` for >=0.24, `ZERO_PUSH_URL` for <0.24
+- Query URL, API keys, and cookie forwarding only emitted for >=0.24
+
+This means a single chart version works across multiple zero-cache releases.
+
 ## Configuration
 
 See [`values.yaml`](values.yaml) for all configurable values with documentation. Key settings:
@@ -41,6 +50,10 @@ See [`values.yaml`](values.yaml) for all configurable values with documentation.
 | `singleNode.enabled` | Use single-node deployment mode | `false` |
 | `common.database.upstream.url` | Postgres connection string (required) | `{}` |
 | `common.auth.secret` / `jwk` / `jwksUrl` | JWT authentication config | `{}` |
+| `common.api.mutateUrl` | Mutation handler URL | `""` |
+| `common.api.queryUrl` | Query handler URL (>=0.24 only) | `""` |
+| `common.advanced.lazyStartup` | Delay startup until first request | `false` |
+| `common.advanced.enableQueryPlanner` | Enable ZQL query planner | `true` |
 | `s3.enabled` | Enable S3-backed Litestream replication | `false` |
 | `viewSyncer.replicas` | Number of view syncer replicas | `2` |
 | `viewSyncer.autoscaling.enabled` | Enable HPA for view syncers | `false` |
@@ -49,14 +62,15 @@ See [`values.yaml`](values.yaml) for all configurable values with documentation.
 
 A GitHub Actions workflow (`version-management.yml`) monitors the `rocicorp/zero` Docker image and updates the chart automatically:
 
-1. Fetches all available Docker image versions from Docker Hub
-2. Updates Chart.yaml `appVersion` and `version` on the main branch
-3. Creates version tags (e.g., `v0.26.1-canary.4`)
-4. Maintains major.minor branches (e.g., `v0.26`) with branch-specific tags
-5. Packages and pushes the Helm chart to `ghcr.io`
-6. Prunes untagged OCI artifacts to keep the registry clean
+1. Fetches the latest Docker image version from Docker Hub
+2. Updates `appVersion` in Chart.yaml and bumps the chart `version` patch
+3. Creates release tags (e.g., `v0.26.1-canary.4`)
+4. Packages and pushes the Helm chart to `ghcr.io`
+5. Prunes untagged OCI artifacts to keep the registry clean
 
-The workflow runs hourly and can be manually triggered from the Actions tab.
+The chart version (`1.x.x`) is independent of the zero-cache appVersion — it auto-increments on each update.
+
+The workflow runs hourly and can be manually triggered from the Actions tab. A `cleanup-all` dispatch option is available for one-time OCI registry cleanup.
 
 ## Development
 
@@ -82,13 +96,16 @@ The `zero-cache-chart` CLI manages version tracking and OCI publishing:
 # Update chart versions from Docker Hub
 zero-cache-chart update \
   --docker-image rocicorp/zero \
-  --oci-registry ghcr.io \
-  --oci-repo synapdeck/zero-cache-chart/zero-cache
+  --oci-repo synapdeck/zero-cache-chart
 
 # Prune untagged OCI artifacts
 zero-cache-chart prune \
-  --github-repo synapdeck/zero-cache-chart \
-  --package-name zero-cache-chart/zero-cache
+  --oci-repo synapdeck/zero-cache-chart \
+  --max-age-days 7
+
+# Delete ALL OCI versions (one-time cleanup)
+zero-cache-chart cleanup-all \
+  --oci-repo synapdeck/zero-cache-chart
 
 # Dry run (no changes)
 zero-cache-chart update --dry-run ...
@@ -98,13 +115,13 @@ zero-cache-chart update --dry-run ...
 
 ```
 src/zero_cache_chart/
-├── cli.py        # Click CLI commands (update, prune)
+├── cli.py        # Click CLI commands (update, prune, cleanup-all)
 ├── chart.py      # Chart.yaml read/write
 ├── docker.py     # Docker Hub API client
 ├── git.py        # Git operations
 ├── oci.py        # OCI registry operations
 ├── types.py      # Shared types and subprocess helpers
-└── versions.py   # Version parsing, comparison, branch logic
+└── versions.py   # Version parsing and classification
 tests/            # pytest test suite
 templates/        # Helm chart templates
 ```
