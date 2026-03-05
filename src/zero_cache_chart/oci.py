@@ -73,8 +73,11 @@ def list_package_versions(org: str, package_name: str) -> list[PackageVersion]:
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
     }
+    # GHCR nests chart name under repo path (e.g. "zero-cache-chart/zero-cache").
+    # The GitHub API requires URL-encoding the slash.
+    encoded_name = package_name.replace("/", "%2F")
     url: str | None = (
-        f"https://api.github.com/orgs/{org}/packages/container/{package_name}/versions"
+        f"https://api.github.com/orgs/{org}/packages/container/{encoded_name}/versions"
         f"?per_page=100"
     )
     all_versions: list[PackageVersion] = []
@@ -99,8 +102,9 @@ def delete_package_version(org: str, package_name: str, version_id: int) -> None
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
     }
+    encoded_name = package_name.replace("/", "%2F")
     resp = requests.delete(
-        f"https://api.github.com/orgs/{org}/packages/container/{package_name}/versions/{version_id}",
+        f"https://api.github.com/orgs/{org}/packages/container/{encoded_name}/versions/{version_id}",
         headers=headers,
         timeout=30,
     )

@@ -16,6 +16,14 @@ from zero_cache_chart.versions import (
 )
 
 
+def _split_oci_repo(oci_repo: str) -> tuple[str, str]:
+    """Split org/package-path, where package-path may contain slashes."""
+    parts = oci_repo.split("/", 1)
+    if len(parts) != 2 or not parts[1]:
+        raise click.BadParameter(f"Expected org/package format, got: {oci_repo}", param_hint="--oci-repo")
+    return parts[0], parts[1]
+
+
 @click.group()
 def main() -> None:
     """zero-cache Helm chart version manager."""
@@ -110,11 +118,7 @@ def prune(
     dry_run: bool,
 ) -> None:
     """Prune untagged OCI versions from the registry."""
-    parts = oci_repo.split("/", 1)
-    if len(parts) != 2:
-        raise click.BadParameter(f"Expected org/package format, got: {oci_repo}", param_hint="--oci-repo")
-
-    org, package_name = parts
+    org, package_name = _split_oci_repo(oci_repo)
     click.echo(f"Pruning untagged versions from {org}/{package_name}")
 
     if dry_run:
@@ -131,11 +135,7 @@ def prune(
 @click.confirmation_option(prompt="This will delete ALL chart versions from the registry. Continue?")
 def cleanup_all(oci_repo: str, dry_run: bool) -> None:
     """Delete ALL OCI chart versions (one-time cleanup)."""
-    parts = oci_repo.split("/", 1)
-    if len(parts) != 2:
-        raise click.BadParameter(f"Expected org/package format, got: {oci_repo}", param_hint="--oci-repo")
-
-    org, package_name = parts
+    org, package_name = _split_oci_repo(oci_repo)
     click.echo(f"Deleting ALL versions from {org}/{package_name}")
 
     if dry_run:

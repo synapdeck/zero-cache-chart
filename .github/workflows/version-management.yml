@@ -86,7 +86,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           nix run .#default -- prune \
-            --oci-repo=synapdeck/zero-cache-chart \
+            --oci-repo=synapdeck/zero-cache-chart/zero-cache \
             --max-age-days=7
 
   cleanup-all-oci:
@@ -100,5 +100,5 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           nix run .#default -- cleanup-all \
-            --oci-repo=synapdeck/zero-cache-chart \
+            --oci-repo=synapdeck/zero-cache-chart/zero-cache \
             --yes
