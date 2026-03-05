@@ -61,3 +61,32 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Extract major.minor.0 from image.tag (or appVersion) for semverCompare.
+Examples: "0.26.1-canary.4" -> "0.26.0", "0.20.2025051800" -> "0.20.0"
+*/}}
+{{- define "zero-cache.zeroVersion" -}}
+{{- $raw := .Values.image.tag | default .Chart.AppVersion | toString -}}
+{{- $parts := splitList "." $raw -}}
+{{- printf "%s.%s.0" (index $parts 0) (index $parts 1) -}}
+{{- end -}}
+
+{{/*
+Core environment variables shared by all workloads.
+Usage: {{- include "zero-cache.env.core" (dict "port" .Values.singleNode.service.port "root" .) | nindent 12 }}
+*/}}
+{{- define "zero-cache.env.core" -}}
+- name: ZERO_PORT
+  value: "{{ .port }}"
+- name: ZERO_APP_ID
+  value: "{{ .root.Values.common.appId }}"
+{{- if .root.Values.common.appPublications }}
+- name: ZERO_APP_PUBLICATIONS
+  value: {{ .root.Values.common.appPublications | join "," | quote }}
+{{- end }}
+- name: ZERO_REPLICA_FILE
+  value: "{{ .root.Values.common.replicaFile }}"
+- name: ZERO_AUTO_RESET
+  value: "{{ .root.Values.common.autoReset }}"
+{{- end -}}
