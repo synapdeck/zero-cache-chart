@@ -26,6 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - name: Lint chart
         run: nix develop --command helm lint .
       - name: Validate templates (single-node)
@@ -58,6 +59,7 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
       - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -81,6 +83,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - name: Prune untagged OCI versions
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -95,6 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - name: Delete all OCI versions
         env:
           GITHUB_TOKEN: ${{ github.token }}
