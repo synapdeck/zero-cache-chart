@@ -35,9 +35,6 @@ def run(cmd: list[str], *, check: bool = True) -> CommandResult:
 @dataclass
 class VersionManagementResult:
     main_updated: bool = False
-    new_branch_created: str | None = None
-    updated_branches: list[str] = field(default_factory=list)
     created_tags: list[str] = field(default_factory=list)
     pushed_oci_packages: list[str] = field(default_factory=list)
-    pruned_oci_versions: int = 0
     current_version: str | None = None
