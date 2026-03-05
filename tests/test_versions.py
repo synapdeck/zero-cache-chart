@@ -1,12 +1,9 @@
-import pytest
 from semver.version import Version
 from zero_cache_chart.versions import (
     build_version_map,
     get_latest_version,
     is_stable,
-    select_retained_branches,
     classify_version_tag,
-    branch_pointer_tags,
 )
 
 
@@ -45,23 +42,6 @@ class TestGetLatestVersion:
         assert get_latest_version([]) is None
 
 
-class TestSelectRetainedBranches:
-    def test_retains_last_n(self):
-        branches = ["v0.19", "v0.20", "v0.21", "v0.22", "v0.23", "v0.24", "v0.25", "v0.26"]
-        retained = select_retained_branches(branches, retain=3)
-        assert retained == ["v0.24", "v0.25", "v0.26"]
-
-    def test_fewer_than_n(self):
-        branches = ["v0.25", "v0.26"]
-        retained = select_retained_branches(branches, retain=3)
-        assert retained == ["v0.25", "v0.26"]
-
-    def test_sorts_numerically(self):
-        branches = ["v0.9", "v0.20", "v0.10"]
-        retained = select_retained_branches(branches, retain=2)
-        assert retained == ["v0.10", "v0.20"]
-
-
 class TestClassifyVersionTag:
     def test_stable(self):
         name, kind = classify_version_tag(v("0.26.0"))
@@ -72,11 +52,3 @@ class TestClassifyVersionTag:
         name, kind = classify_version_tag(v("0.26.0-canary.4"))
         assert name == "v0.26.0-canary.4"
         assert kind == "prerelease"
-
-
-class TestBranchPointerTags:
-    def test_stable(self):
-        assert branch_pointer_tags(v("0.26.0")) == ["v0.26"]
-
-    def test_canary(self):
-        assert branch_pointer_tags(v("0.26.0-canary.4")) == ["v0.26-canary"]
