@@ -45,11 +45,16 @@
               ]
             );
 
+          inherit (pkgs.callPackages pyproject-nix.build.util { }) mkApplication;
+
           venv = pythonSet.mkVirtualEnv "zero-cache-chart-env" workspace.deps.default;
           devVenv = pythonSet.mkVirtualEnv "zero-cache-chart-dev-env" workspace.deps.all;
         in
         {
-          packages.default = venv;
+          packages.default = mkApplication {
+            venv = venv;
+            package = pythonSet.zero-cache-chart;
+          };
 
           devShells.default = pkgs.mkShell {
             packages = [
