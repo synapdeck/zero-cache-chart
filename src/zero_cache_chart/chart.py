@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
-import base64
 import re
 from pathlib import Path
 
 import yaml
 from semver.version import Version
+
+from zero_cache_chart.types import run
 
 
 def read_chart_version(chart_path: Path) -> Version | None:
@@ -57,10 +57,22 @@ def write_chart_version(chart_path: Path, version: Version) -> str | None:
     return str(data["version"])
 
 
-def sri_hash(path: Path) -> str:
-    """Compute SRI hash (sha256) of a file."""
-    digest = hashlib.sha256(path.read_bytes()).digest()
-    return "sha256-" + base64.b64encode(digest).decode()
+def sri_hash(tgz_path: Path) -> str:
+    """Compute Nix NAR hash (sha256, SRI) of an untarred chart directory."""
+    import tarfile
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with tarfile.open(tgz_path) as tar:
+            tar.extractall(tmp)
+
+        # helm package creates a single top-level directory inside the tarball
+        entries = list(Path(tmp).iterdir())
+        if len(entries) != 1 or not entries[0].is_dir():
+            raise RuntimeError(f"Expected single chart directory in {tgz_path}, got: {entries}")
+
+        result = run(["nix", "hash", "path", "--type", "sha256", "--sri", str(entries[0])])
+        return result.stdout.strip()
 
 
 def write_chart_nix(nix_path: Path, version: str, chart_hash: str) -> None:
