@@ -268,3 +268,142 @@ Query URL, API keys, and cookie forwarding only exist >=0.24.
 {{- end }}
 {{- end }}
 {{- end -}}
+
+{{/*
+Litestream configuration environment variables (shared).
+Does NOT include ZERO_LITESTREAM_BACKUP_URL (workload-specific).
+*/}}
+{{- define "zero-cache.env.litestream" -}}
+{{- if or .Values.s3.enabled .Values.common.litestream.backupUrl }}
+- name: ZERO_LITESTREAM_CONFIG_PATH
+  value: "/etc/litestream/litestream.yml"
+{{- end }}
+- name: ZERO_LITESTREAM_CHECKPOINT_THRESHOLD_MB
+  value: "{{ .Values.common.litestream.checkpointThresholdMb }}"
+- name: ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES
+  value: "{{ .Values.common.litestream.incrementalBackupIntervalMinutes }}"
+- name: ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_HOURS
+  value: "{{ .Values.common.litestream.snapshotBackupIntervalHours }}"
+- name: ZERO_LITESTREAM_RESTORE_PARALLELISM
+  value: "{{ .Values.common.litestream.restoreParallelism }}"
+- name: ZERO_LITESTREAM_LOG_LEVEL
+  value: "{{ .Values.common.litestream.logLevel }}"
+- name: ZERO_LITESTREAM_MULTIPART_CONCURRENCY
+  value: "{{ .Values.common.litestream.multipartConcurrency }}"
+- name: ZERO_LITESTREAM_MULTIPART_SIZE
+  value: "{{ .Values.common.litestream.multipartSize }}"
+{{- end -}}
+
+{{/*
+S3/AWS credential environment variables.
+*/}}
+{{- define "zero-cache.env.s3" -}}
+{{- if .Values.s3.enabled }}
+{{- if or .Values.s3.accessKey.value .Values.s3.accessKey.valueFrom }}
+- name: AWS_ACCESS_KEY_ID
+  {{- if .Values.s3.accessKey.value }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-s3
+      key: access-key
+  {{- else }}
+  valueFrom:
+    {{ toYaml .Values.s3.accessKey.valueFrom | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- if or .Values.s3.secretKey.value .Values.s3.secretKey.valueFrom }}
+- name: AWS_SECRET_ACCESS_KEY
+  {{- if .Values.s3.secretKey.value }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-s3
+      key: secret-key
+  {{- else }}
+  valueFrom:
+    {{ toYaml .Values.s3.secretKey.valueFrom | nindent 4 }}
+  {{- end }}
+{{- end }}
+- name: AWS_REGION
+  value: "{{ .Values.s3.region }}"
+{{- if .Values.s3.endpoint }}
+- name: AWS_ENDPOINT_URL
+  value: "{{ .Values.s3.endpoint }}"
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Performance tuning environment variables.
+*/}}
+{{- define "zero-cache.env.performance" -}}
+{{- if .Values.common.performance.replicaVacuumIntervalHours }}
+- name: ZERO_REPLICA_VACUUM_INTERVAL_HOURS
+  value: "{{ .Values.common.performance.replicaVacuumIntervalHours }}"
+{{- end }}
+- name: ZERO_INITIAL_SYNC_TABLE_COPY_WORKERS
+  value: "{{ .Values.common.performance.initialSyncTableCopyWorkers }}"
+{{- end -}}
+
+{{/*
+Logging and telemetry environment variables.
+*/}}
+{{- define "zero-cache.env.logging" -}}
+- name: ZERO_LOG_FORMAT
+  value: "{{ .Values.common.logging.format }}"
+- name: ZERO_LOG_LEVEL
+  value: "{{ .Values.common.logging.level }}"
+- name: ZERO_LOG_SLOW_HYDRATE_THRESHOLD
+  value: "{{ .Values.common.logging.slowHydrateThreshold }}"
+- name: ZERO_LOG_SLOW_ROW_THRESHOLD
+  value: "{{ .Values.common.logging.slowRowThreshold }}"
+- name: ZERO_LOG_IVM_SAMPLING
+  value: "{{ .Values.common.logging.ivmSampling }}"
+{{- if .Values.common.logging.otel.enable }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: "{{ .Values.common.logging.otel.endpoint }}"
+- name: OTEL_EXPORTER_OTLP_HEADERS
+  value: "{{ .Values.common.logging.otel.headers }}"
+- name: OTEL_RESOURCE_ATTRIBUTES
+  value: "{{ .Values.common.logging.otel.resourceAttributes }}"
+- name: OTEL_NODE_RESOURCE_DETECTORS
+  value: "{{ .Values.common.logging.otel.nodeResourceDetectors }}"
+{{- end }}
+{{- end -}}
+
+{{/*
+Advanced/optional environment variables.
+*/}}
+{{- define "zero-cache.env.advanced" -}}
+{{- if .Values.common.advanced.lazyStartup }}
+- name: ZERO_LAZY_STARTUP
+  value: "true"
+{{- end }}
+{{- if not .Values.common.advanced.enableTelemetry }}
+- name: DO_NOT_TRACK
+  value: "1"
+{{- end }}
+{{- if not .Values.common.advanced.enableQueryPlanner }}
+- name: ZERO_ENABLE_QUERY_PLANNER
+  value: "false"
+{{- end }}
+{{- if .Values.common.advanced.yieldThresholdMs }}
+- name: ZERO_YIELD_THRESHOLD_MS
+  value: "{{ .Values.common.advanced.yieldThresholdMs }}"
+{{- end }}
+{{- if .Values.common.advanced.replicaPageCacheSizeKib }}
+- name: ZERO_REPLICA_PAGE_CACHE_SIZE_KIB
+  value: "{{ .Values.common.advanced.replicaPageCacheSizeKib }}"
+{{- end }}
+{{- if .Values.common.advanced.storageTmpDir }}
+- name: ZERO_STORAGE_DB_TMP_DIR
+  value: "{{ .Values.common.advanced.storageTmpDir }}"
+{{- end }}
+{{- if .Values.common.advanced.websocketCompression }}
+- name: ZERO_WEBSOCKET_COMPRESSION
+  value: "true"
+{{- if .Values.common.advanced.websocketCompressionOptions }}
+- name: ZERO_WEBSOCKET_COMPRESSION_OPTIONS
+  value: {{ .Values.common.advanced.websocketCompressionOptions | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
