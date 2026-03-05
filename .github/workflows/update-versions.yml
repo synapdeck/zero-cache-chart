@@ -1,0 +1,68 @@
+name: Update Versions
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+  packages: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set git identity
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@main
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Update versions
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          nix run .#default -- update \
+            --docker-image=rocicorp/zero \
+            --chart-path=Chart.yaml \
+            --oci-registry=ghcr.io \
+            --oci-repo=synapdeck/zero-cache-chart
+
+  prune:
+    needs: update
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@main
+      - name: Prune untagged OCI versions
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          nix run .#default -- prune \
+            --oci-repo=synapdeck/zero-cache-chart/zero-cache \
+            --max-age-days=7
+
+  flakehub:
+    needs: update
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-push@main
+        with:
+          visibility: public
+          rolling: true

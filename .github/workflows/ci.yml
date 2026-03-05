@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@main
+      - name: Lint chart
+        run: nix develop --command helm lint .
+      - name: Validate templates (single-node)
+        run: |
+          nix develop --command bash -c "
+            helm template zero-cache . \
+              --set singleNode.enabled=true \
+              --set common.database.upstream.url.value=postgres://test:test@localhost/test \
+              | kubeconform -strict -summary
+          "
+      - name: Validate templates (multi-node)
+        run: |
+          nix develop --command bash -c "
+            helm template zero-cache . \
+              --set common.database.upstream.url.value=postgres://test:test@localhost/test \
+              | kubeconform -strict -summary
+          "
+      - name: Run tests
+        run: nix develop --command uv run pytest -v
