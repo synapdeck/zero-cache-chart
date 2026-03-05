@@ -90,3 +90,125 @@ Usage: {{- include "zero-cache.env.core" (dict "port" .Values.singleNode.service
 - name: ZERO_AUTO_RESET
   value: "{{ .root.Values.common.autoReset }}"
 {{- end -}}
+
+{{/*
+Database environment variables.
+Usage: {{- include "zero-cache.env.database" .root | nindent 12 }}
+(Expects the root context, i.e. the top-level .)
+*/}}
+{{- define "zero-cache.env.database" -}}
+- name: ZERO_UPSTREAM_DB
+  {{- if .Values.common.database.upstream.url.valueFrom }}
+  valueFrom:
+    {{ toYaml .Values.common.database.upstream.url.valueFrom | nindent 4 }}
+  {{- else }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-db
+      key: upstream-db
+  {{- end }}
+- name: ZERO_UPSTREAM_MAX_CONNS
+  value: "{{ .Values.common.database.upstream.maxConns }}"
+{{- if or .Values.common.database.cvr.url.value .Values.common.database.cvr.url.valueFrom }}
+- name: ZERO_CVR_DB
+  {{- if .Values.common.database.cvr.url.valueFrom }}
+  valueFrom:
+    {{ toYaml .Values.common.database.cvr.url.valueFrom | nindent 4 }}
+  {{- else }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-db
+      key: cvr-db
+  {{- end }}
+{{- end }}
+- name: ZERO_CVR_MAX_CONNS
+  value: "{{ .Values.common.database.cvr.maxConns }}"
+{{- if or .Values.common.database.change.url.value .Values.common.database.change.url.valueFrom }}
+- name: ZERO_CHANGE_DB
+  {{- if .Values.common.database.change.url.valueFrom }}
+  valueFrom:
+    {{ toYaml .Values.common.database.change.url.valueFrom | nindent 4 }}
+  {{- else }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-db
+      key: change-db
+  {{- end }}
+{{- end }}
+- name: ZERO_CHANGE_MAX_CONNS
+  value: "{{ .Values.common.database.change.maxConns }}"
+{{- with .Values.common.database.cvr.garbageCollection }}
+{{- if .initialBatchSize }}
+- name: ZERO_CVR_GARBAGE_COLLECTION_INITIAL_BATCH_SIZE
+  value: "{{ .initialBatchSize }}"
+- name: ZERO_CVR_GARBAGE_COLLECTION_INITIAL_INTERVAL_SECONDS
+  value: "{{ .initialIntervalSeconds }}"
+- name: ZERO_CVR_GARBAGE_COLLECTION_INACTIVITY_THRESHOLD_HOURS
+  value: "{{ .inactivityThresholdHours }}"
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Authentication environment variables (deprecated >=0.25 but still functional).
+*/}}
+{{- define "zero-cache.env.auth" -}}
+{{- if or .Values.common.auth.secret.value .Values.common.auth.secret.valueFrom }}
+- name: ZERO_AUTH_SECRET
+  {{- if .Values.common.auth.secret.value }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-auth
+      key: auth-secret
+  {{- else }}
+  valueFrom:
+    {{ toYaml .Values.common.auth.secret.valueFrom | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- if or .Values.common.auth.jwk.value .Values.common.auth.jwk.valueFrom }}
+- name: ZERO_AUTH_JWK
+  {{- if .Values.common.auth.jwk.value }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-auth
+      key: auth-jwk
+  {{- else }}
+  valueFrom:
+    {{ toYaml .Values.common.auth.jwk.valueFrom | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- if or .Values.common.auth.jwksUrl.value .Values.common.auth.jwksUrl.valueFrom }}
+- name: ZERO_AUTH_JWKS_URL
+  {{- if .Values.common.auth.jwksUrl.value }}
+  value: "{{ .Values.common.auth.jwksUrl.value }}"
+  {{- else }}
+  valueFrom:
+    {{ toYaml .Values.common.auth.jwksUrl.valueFrom | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Admin password environment variable.
+*/}}
+{{- define "zero-cache.env.admin" -}}
+{{- if .Values.common.adminPassword }}
+- name: ZERO_ADMIN_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-admin
+      key: admin-password
+{{- end }}
+{{- end -}}
+
+{{/*
+Rate limiting environment variables.
+*/}}
+{{- define "zero-cache.env.ratelimit" -}}
+{{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
+- name: ZERO_PER_USER_MUTATION_LIMIT_MAX
+  value: "{{ .Values.common.rateLimiting.perUserMutationLimitMax }}"
+{{- end }}
+- name: ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS
+  value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"
+{{- end -}}
