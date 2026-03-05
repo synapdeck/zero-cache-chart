@@ -99,6 +99,14 @@ common:
         #     optional: false
       # Max connections to CVR database
       maxConns: 30
+      # CVR garbage collection
+      garbageCollection:
+        # Hours of inactivity before CVR eligible for purging
+        inactivityThresholdHours: 48
+        # CVRs purged per GC interval (0 = disabled)
+        initialBatchSize: 25
+        # Initial interval in seconds between GC checks
+        initialIntervalSeconds: 60
 
     # Change database connection configuration
     change:
@@ -130,6 +138,10 @@ common:
     restoreParallelism: 48
     # Log level for litestream
     logLevel: warn
+    # Parallel parts for snapshot upload/download
+    multipartConcurrency: 48
+    # Size of each multipart chunk in bytes (default 16 MiB)
+    multipartSize: 16777216
 
   # Performance tuning
   performance:
@@ -137,8 +149,6 @@ common:
     replicaVacuumIntervalHours: null
     # Workers for table copying during initial sync
     initialSyncTableCopyWorkers: 5
-    # Target row count to keep on the client
-    targetClientRowCount: 20000
 
   # Logging configuration
   logging:
@@ -166,11 +176,50 @@ common:
     # Window for mutation rate limiting (ms)
     perUserMutationLimitWindowMs: 60000
 
-  # Custom mutator settings
-  customMutators:
-    # URL for pushing custom mutations to your server
-    # Required if you use custom mutators: https://zero.rocicorp.dev/docs/custom-mutators
-    pushUrl: ""
+  # API server endpoints (custom queries and mutators)
+  # See: https://zero.rocicorp.dev/docs/custom-mutators
+  api:
+    # URL for mutation handler (ZERO_MUTATE_URL >=0.24, ZERO_PUSH_URL <0.24)
+    mutateUrl: ""
+    # URL for query handler (>=0.24 only)
+    queryUrl: ""
+    # API key for authorizing zero-cache to call mutation handler
+    mutateApiKey: {}
+      # value: "your-api-key"
+      # valueFrom:
+      #   secretKeyRef:
+      #     name: my-api-key
+      #     key: mutate-key
+    # API key for authorizing zero-cache to call query handler
+    queryApiKey: {}
+      # value: "your-api-key"
+      # valueFrom:
+      #   secretKeyRef:
+      #     name: my-api-key
+      #     key: query-key
+    # Forward cookies from client requests to mutation handler
+    mutateForwardCookies: false
+    # Forward cookies from client requests to query handler
+    queryForwardCookies: false
+
+  # Advanced configuration
+  advanced:
+    # Delay startup until first request (single-node only)
+    lazyStartup: false
+    # Anonymous telemetry (set false or DO_NOT_TRACK=1 to disable)
+    enableTelemetry: true
+    # Enable query planner for ZQL optimization
+    enableQueryPlanner: true
+    # Max ms a sync worker spends in IVM before yielding
+    yieldThresholdMs: 10
+    # SQLite page cache size in KiB (null = SQLite default ~2MB)
+    replicaPageCacheSizeKib: null
+    # Temp directory for IVM operator storage
+    storageTmpDir: ""
+    # WebSocket per-message deflate compression
+    websocketCompression: false
+    # WebSocket compression options (JSON string)
+    websocketCompressionOptions: ""
 
 ## Single Node Configuration
 ## This is a simplified deployment option for development or small deployments
