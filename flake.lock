@@ -7,31 +7,28 @@
       "locked": {
         "lastModified": 1772408722,
         "narHash": "sha256-rHuJtdcOjK7rAHpHphUb1iCvgkU3GpfvicLMwwnfMT0=",
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
         "rev": "f20dc5d9b8027381c474144ecabc9034d6a839a3",
-        "type": "github"
+        "revCount": 445,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/hercules-ci/flake-parts/0.1.445%2Brev-f20dc5d9b8027381c474144ecabc9034d6a839a3/019cad18-ffd9-70a0-90f8-be89e5f67bbd/source.tar.gz"
       },
       "original": {
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/hercules-ci/flake-parts/0.1"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1772615108,
-        "narHash": "sha256-lC0KbklwgeSqS+sTkaYpnSYr/HDeVMzYUZqV/dT31Lo=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "0c39f3b5a9a234421d4ad43ab9c7cf64840172d0",
-        "type": "github"
+        "lastModified": 1772542754,
+        "narHash": "sha256-WGV2hy+VIeQsYXpsLjdr4GvHv5eECMISX1zKLTedhdg=",
+        "rev": "8c809a146a140c5c8806f13399592dbcb1bb5dc4",
+        "revCount": 957538,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.957538%2Brev-8c809a146a140c5c8806f13399592dbcb1bb5dc4/019cb563-81c1-72cf-aec2-46679a968011/source.tar.gz"
       },
       "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1"
       }
     },
     "nixpkgs-lib": {
@@ -64,15 +61,14 @@
       "locked": {
         "lastModified": 1772555609,
         "narHash": "sha256-3BA3HnUvJSbHJAlJj6XSy0Jmu7RyP2gyB/0fL7XuEDo=",
-        "owner": "pyproject-nix",
-        "repo": "build-system-pkgs",
         "rev": "c37f66a953535c394244888598947679af231863",
-        "type": "github"
+        "revCount": 67,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/build-system-pkgs/0.1.67%2Brev-c37f66a953535c394244888598947679af231863/019cb4d1-3070-700e-bc58-1175165a0f2e/source.tar.gz"
       },
       "original": {
-        "owner": "pyproject-nix",
-        "repo": "build-system-pkgs",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/pyproject-nix/build-system-pkgs/0.1"
       }
     },
     "pyproject-nix": {
@@ -82,17 +78,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1771518446,
-        "narHash": "sha256-nFJSfD89vWTu92KyuJWDoTQJuoDuddkJV3TlOl1cOic=",
-        "owner": "pyproject-nix",
-        "repo": "pyproject.nix",
-        "rev": "eb204c6b3335698dec6c7fc1da0ebc3c6df05937",
-        "type": "github"
+        "lastModified": 1751557494,
+        "narHash": "sha256-dnueIffmEKtG0V4feifalsOYaHXXsrGMaoKI+4O7v/8=",
+        "rev": "939ef94aea81c17bfd2f388465309eab76c45c37",
+        "revCount": 488,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/pyproject.nix/0.1.488%2Brev-939ef94aea81c17bfd2f388465309eab76c45c37/0197d15e-ef7c-7a39-888c-ba4e553111cf/source.tar.gz"
       },
       "original": {
-        "owner": "pyproject-nix",
-        "repo": "pyproject.nix",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/pyproject-nix/pyproject.nix/0.1"
       }
     },
     "root": {
@@ -114,17 +109,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1772545244,
-        "narHash": "sha256-Ys+5UMOqp2kRvnSjyBcvGnjOhkIXB88On1ZcAstz1vY=",
-        "owner": "pyproject-nix",
-        "repo": "uv2nix",
-        "rev": "482aba340ded40ef557d331315f227d5eba84ced",
-        "type": "github"
+        "lastModified": 1771407777,
+        "narHash": "sha256-dAu/mZn4vHbkKaaq+pjLTF3AEfZybYofpDKP2qEi5fQ=",
+        "rev": "3eb70480bdae2382d61e94340975011f080c3f20",
+        "revCount": 420,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/uv2nix/0.1.420%2Brev-3eb70480bdae2382d61e94340975011f080c3f20/019c71e0-3a46-7d78-b1fa-e2bb582b7da2/source.tar.gz"
       },
       "original": {
-        "owner": "pyproject-nix",
-        "repo": "uv2nix",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/pyproject-nix/uv2nix/0.1"
       }
     }
   },
