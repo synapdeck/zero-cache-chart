@@ -10,10 +10,7 @@ from zero_cache_chart.docker import fetch_docker_versions
 from zero_cache_chart.git import Git
 from zero_cache_chart.oci import push_if_not_exists, prune_untagged, delete_all_versions
 from zero_cache_chart.types import VersionManagementResult
-from zero_cache_chart.versions import (
-    get_latest_stable,
-    classify_version_tag,
-)
+from zero_cache_chart.versions import get_latest_stable
 
 
 def _split_oci_repo(oci_repo: str) -> tuple[str, str]:
@@ -82,8 +79,6 @@ def update(
 
     if dry_run:
         click.echo(f"\n[DRY RUN] Would update: {current_version} -> {latest}")
-        tag_name, kind = classify_version_tag(latest)
-        click.echo(f"  Create tag: {tag_name} ({kind})")
         click.echo(f"  Push to OCI: {oci_registry}/{oci_repo}")
         return
 
@@ -118,13 +113,13 @@ def update(
     git.push("main")
     result.main_updated = True
 
-    # 7. Create release tag
-    tag_name, kind = classify_version_tag(latest)
+    # 7. Create release tag (based on chart version, not appVersion)
+    tag_name = f"v{oci_version}"
     if not git.tag_exists(tag_name):
         git.create_tag(tag_name)
         git.push_tag(tag_name)
         result.created_tags.append(tag_name)
-        click.echo(f"Created tag {tag_name} ({kind})")
+        click.echo(f"Created tag {tag_name}")
 
     # Summary
     click.echo("\n=== Summary ===")
