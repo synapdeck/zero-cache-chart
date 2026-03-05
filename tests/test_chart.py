@@ -1,4 +1,6 @@
 from pathlib import Path
+
+import yaml
 from semver.version import Version
 from zero_cache_chart.chart import read_chart_version, write_chart_version
 
@@ -19,7 +21,27 @@ def test_read_chart_version_invalid(tmp_path: Path):
 
 def test_write_chart_version(tmp_path: Path):
     chart = tmp_path / "Chart.yaml"
-    chart.write_text("apiVersion: v2\nappVersion: 0.25.0\nversion: 0.25.0\nname: zero-cache\n")
+    chart.write_text("apiVersion: v2\nappVersion: 0.25.0\nversion: 1.0.0\nname: zero-cache\n")
     write_chart_version(chart, Version.parse("0.26.0"))
     ver = read_chart_version(chart)
     assert ver == Version.parse("0.26.0")
+
+
+def test_write_chart_version_independent(tmp_path: Path):
+    """Chart version bumps patch independently from appVersion."""
+    chart = tmp_path / "Chart.yaml"
+    chart.write_text("apiVersion: v2\nappVersion: 0.25.0\nversion: 1.0.0\nname: zero-cache\n")
+    write_chart_version(chart, Version.parse("0.26.0"))
+    data = yaml.safe_load(chart.read_text())
+    assert data["appVersion"] == "0.26.0"
+    assert data["version"] == "1.0.1"
+
+
+def test_write_chart_version_no_change(tmp_path: Path):
+    """Chart version unchanged when appVersion is the same."""
+    chart = tmp_path / "Chart.yaml"
+    chart.write_text("apiVersion: v2\nappVersion: 0.26.0\nversion: 1.0.5\nname: zero-cache\n")
+    write_chart_version(chart, Version.parse("0.26.0"))
+    data = yaml.safe_load(chart.read_text())
+    assert data["appVersion"] == "0.26.0"
+    assert data["version"] == "1.0.5"
