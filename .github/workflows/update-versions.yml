@@ -55,14 +55,3 @@ jobs:
           nix run .#default -- prune \
             --oci-repo=synapdeck/zero-cache-chart/zero-cache \
             --max-age-days=7
-
-  flakehub:
-    needs: update
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-push@main
-        with:
-          visibility: public
-          rolling: true
