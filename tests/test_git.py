@@ -2,7 +2,6 @@ import subprocess
 from pathlib import Path
 from zero_cache_chart.git import (
     Git,
-    list_version_branches,
     parse_major_minor,
 )
 

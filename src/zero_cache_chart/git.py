@@ -81,6 +81,3 @@ class Git:
         ]
 
 
-def list_version_branches(git: Git) -> list[str]:
-    branches = git.list_remote_branches()
-    return [b for b in branches if re.match(r"v\d+\.\d+$", b)]
