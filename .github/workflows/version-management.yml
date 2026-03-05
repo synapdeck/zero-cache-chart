@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: "0 * * * *"
   workflow_dispatch:
+    inputs:
+      cleanup_all:
+        description: "Delete ALL old OCI chart versions (one-time cleanup)"
+        type: boolean
+        default: false
   pull_request:
     branches: [main]
 
@@ -23,16 +28,26 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Lint chart
         run: nix develop --command helm lint .
-      - name: Validate templates
+      - name: Validate templates (single-node)
         run: |
           nix develop --command bash -c "
-            helm template zero-cache . | kubeconform -strict -summary
+            helm template zero-cache . \
+              --set singleNode.enabled=true \
+              --set common.database.upstream.url.value=postgres://test:test@localhost/test \
+              | kubeconform -strict -summary
+          "
+      - name: Validate templates (multi-node)
+        run: |
+          nix develop --command bash -c "
+            helm template zero-cache . \
+              --set common.database.upstream.url.value=postgres://test:test@localhost/test \
+              | kubeconform -strict -summary
           "
       - name: Run tests
         run: nix develop --command uv run pytest -v
 
   update-versions:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && !inputs.cleanup_all
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,11 +73,10 @@ jobs:
             --docker-image=rocicorp/zero \
             --chart-path=Chart.yaml \
             --oci-registry=ghcr.io \
-            --oci-repo=synapdeck/zero-cache-chart \
-            --branch-retention=3
+            --oci-repo=synapdeck/zero-cache-chart
 
   prune-oci:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && !inputs.cleanup_all
     needs: update-versions
     runs-on: ubuntu-latest
     steps:
@@ -74,6 +88,20 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           nix run .#default -- prune \
-            --oci-registry=ghcr.io \
             --oci-repo=synapdeck/zero-cache-chart \
             --max-age-days=7
+
+  cleanup-all-oci:
+    if: github.event_name == 'workflow_dispatch' && inputs.cleanup_all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Delete all OCI versions
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          nix run .#default -- cleanup-all \
+            --oci-repo=synapdeck/zero-cache-chart \
+            --yes
