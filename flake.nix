@@ -25,6 +25,22 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
 
+      flake.chartMetadata = import ./chart.nix;
+
+      flake.chart = let
+        helmFiles = builtins.path {
+          path = ./.;
+          name = "zero-cache-chart-src";
+          filter = path: type:
+            let
+              base = builtins.baseNameOf path;
+              relPath = builtins.substring (builtins.stringLength (toString ./.) + 1) (-1) (toString path);
+            in
+            builtins.elem base [ "Chart.yaml" "values.yaml" "Chart.lock" ".helmignore" ]
+            || nixpkgs.lib.hasPrefix "templates" relPath;
+        };
+      in helmFiles;
+
       perSystem = { pkgs, system, ... }:
         let
           workspace = uv2nix.lib.workspace.loadWorkspace {
@@ -51,10 +67,16 @@
           devVenv = pythonSet.mkVirtualEnv "zero-cache-chart-dev-env" workspace.deps.all;
         in
         {
-          packages.default = mkApplication {
+          packages.default = (mkApplication {
             venv = venv;
             package = pythonSet.zero-cache-chart;
-          };
+          }).overrideAttrs (prev: {
+            nativeBuildInputs = (prev.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
+            postFixup = (prev.postFixup or "") + ''
+              wrapProgram $out/bin/zero-cache-chart \
+                --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.kubernetes-helm pkgs.oras ]}
+            '';
+          });
 
           devShells.default = pkgs.mkShell {
             packages = [

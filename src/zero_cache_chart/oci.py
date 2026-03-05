@@ -47,15 +47,13 @@ def push_if_not_exists(
     repo: str,
     version: str,
     chart_dir: Path = Path("."),
-) -> bool:
+) -> Path | None:
+    """Push chart if not already in registry. Returns package path if pushed, None otherwise."""
     if version_exists_in_registry(registry, repo, version):
-        return False
+        return None
     package_path = package_chart(chart_dir)
-    try:
-        push_chart(package_path, registry, repo)
-        return True
-    finally:
-        package_path.unlink(missing_ok=True)
+    push_chart(package_path, registry, repo)
+    return package_path
 
 
 def _parse_package_versions(

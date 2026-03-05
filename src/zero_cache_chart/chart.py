@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import base64
+import re
 from pathlib import Path
 
 import yaml
@@ -42,4 +45,18 @@ def write_chart_version(chart_path: Path, version: Version) -> str | None:
         data["version"] = new_app
 
     chart_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
-    return data["version"]
+    return str(data["version"])
+
+
+def sri_hash(path: Path) -> str:
+    """Compute SRI hash (sha256) of a file."""
+    digest = hashlib.sha256(path.read_bytes()).digest()
+    return "sha256-" + base64.b64encode(digest).decode()
+
+
+def write_chart_nix(nix_path: Path, version: str, chart_hash: str) -> None:
+    """Update version and chartHash in chart.nix."""
+    text = nix_path.read_text()
+    text = re.sub(r'(version\s*=\s*)"[^"]*"', rf'\1"{version}"', text)
+    text = re.sub(r'(chartHash\s*=\s*)"[^"]*"', rf'\1"{chart_hash}"', text)
+    nix_path.write_text(text)

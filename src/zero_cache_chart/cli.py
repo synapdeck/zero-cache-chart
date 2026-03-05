@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 from semver.version import Version
 
-from zero_cache_chart.chart import read_chart_version, read_chart_oci_version, write_chart_version
+from zero_cache_chart.chart import read_chart_version, read_chart_oci_version, write_chart_version, sri_hash, write_chart_nix
 from zero_cache_chart.docker import fetch_docker_versions
 from zero_cache_chart.git import Git
 from zero_cache_chart.oci import push_if_not_exists, prune_untagged, delete_all_versions
@@ -64,10 +64,20 @@ def update(
     up_to_date = not latest or (current_version and latest <= current_version)
     if up_to_date:
         click.echo("Already up to date")
-        # Still ensure OCI package is published (e.g. after cleanup)
-        oci_version = read_chart_oci_version(chart)
-        if not dry_run and push_if_not_exists(oci_registry, oci_repo, oci_version):
-            click.echo(f"Pushed {oci_version} to OCI")
+        if not dry_run:
+            oci_version = read_chart_oci_version(chart)
+            package_path = push_if_not_exists(oci_registry, oci_repo, oci_version)
+            if package_path:
+                click.echo(f"Pushed {oci_version} to OCI")
+                nix_path = chart.parent / "chart.nix"
+                if nix_path.exists():
+                    chart_hash = sri_hash(package_path)
+                    write_chart_nix(nix_path, oci_version, chart_hash)
+                    git.add(str(nix_path))
+                    git.commit(f"chore(chart): update chart.nix hash for {oci_version}")
+                    git.push("main")
+                    click.echo(f"Updated chart.nix (hash: {chart_hash[:20]}...)")
+                package_path.unlink(missing_ok=True)
         return
 
     if dry_run:
@@ -79,28 +89,42 @@ def update(
 
     # 3. Update Chart.yaml (appVersion + bump chart patch)
     click.echo(f"\nUpdating: {current_version} -> {latest}")
-    write_chart_version(chart, latest)
+    new_chart_version = write_chart_version(chart, latest)
+
+    # 4. Push to OCI registry (uses chart version as tag, not appVersion)
+    oci_version = read_chart_oci_version(chart)
+    package_path = push_if_not_exists(oci_registry, oci_repo, oci_version)
+    if package_path:
+        result.pushed_oci_packages.append(oci_version)
+        click.echo(f"Pushed {oci_version} to OCI")
+
+        # 5. Update chart.nix with version and hash from packaged chart
+        nix_path = chart.parent / "chart.nix"
+        if nix_path.exists():
+            chart_hash = sri_hash(package_path)
+            write_chart_nix(nix_path, oci_version, chart_hash)
+            click.echo(f"Updated chart.nix (hash: {chart_hash[:20]}...)")
+
+        package_path.unlink(missing_ok=True)
+    else:
+        click.echo(f"OCI package {oci_version} already exists")
+
+    # 6. Commit and push
     git.add(chart_path)
+    nix_path = chart.parent / "chart.nix"
+    if nix_path.exists():
+        git.add(str(nix_path))
     git.commit(f"chore(chart): update appVersion to {latest}")
     git.push("main")
     result.main_updated = True
 
-    # 4. Create release tag
+    # 7. Create release tag
     tag_name, kind = classify_version_tag(latest)
     if not git.tag_exists(tag_name):
         git.create_tag(tag_name)
         git.push_tag(tag_name)
         result.created_tags.append(tag_name)
         click.echo(f"Created tag {tag_name} ({kind})")
-
-    # 5. Push to OCI registry (uses chart version as tag, not appVersion)
-    oci_version = read_chart_oci_version(chart)
-    pushed = push_if_not_exists(oci_registry, oci_repo, oci_version)
-    if pushed:
-        result.pushed_oci_packages.append(oci_version)
-        click.echo(f"Pushed {oci_version} to OCI")
-    else:
-        click.echo(f"OCI package {oci_version} already exists")
 
     # Summary
     click.echo("\n=== Summary ===")
