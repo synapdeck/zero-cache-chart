@@ -1,0 +1,30 @@
+name: Update Flake Lock
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set git identity
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@main
+      - name: Update flake.lock
+        run: nix flake update
+      - name: Push changes
+        run: |
+          git add flake.lock
+          git diff --staged --quiet && echo "No changes" && exit 0
+          git commit -m "chore(nix): update flake.lock"
+          git push
