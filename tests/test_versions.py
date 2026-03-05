@@ -1,7 +1,7 @@
 from semver.version import Version
 from zero_cache_chart.versions import (
     build_version_map,
-    get_latest_version,
+    get_latest_stable,
     is_stable,
     classify_version_tag,
 )
@@ -33,13 +33,17 @@ class TestBuildVersionMap:
         assert build_version_map([]) == {}
 
 
-class TestGetLatestVersion:
-    def test_returns_highest(self):
+class TestGetLatestStable:
+    def test_returns_highest_stable(self):
         versions = [v("0.25.0"), v("0.26.0"), v("0.26.1-canary.4")]
-        assert get_latest_version(versions) == v("0.26.1-canary.4")
+        assert get_latest_stable(versions) == v("0.26.0")
+
+    def test_skips_all_prerelease(self):
+        versions = [v("0.26.0-canary.1"), v("0.26.0-canary.4")]
+        assert get_latest_stable(versions) is None
 
     def test_empty_returns_none(self):
-        assert get_latest_version([]) is None
+        assert get_latest_stable([]) is None
 
 
 class TestClassifyVersionTag:

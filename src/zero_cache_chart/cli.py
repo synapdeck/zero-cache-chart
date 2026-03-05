@@ -11,7 +11,7 @@ from zero_cache_chart.git import Git
 from zero_cache_chart.oci import push_if_not_exists, prune_untagged, delete_all_versions
 from zero_cache_chart.types import VersionManagementResult
 from zero_cache_chart.versions import (
-    get_latest_version,
+    get_latest_stable,
     classify_version_tag,
 )
 
@@ -58,11 +58,16 @@ def update(
         click.echo("No versions found on Docker Hub")
         return
 
-    latest = get_latest_version(all_versions)
-    click.echo(f"Latest upstream: {latest}")
+    latest = get_latest_stable(all_versions)
+    click.echo(f"Latest stable upstream: {latest}")
 
-    if not latest or (current_version and latest <= current_version):
+    up_to_date = not latest or (current_version and latest <= current_version)
+    if up_to_date:
         click.echo("Already up to date")
+        # Still ensure OCI package is published (e.g. after cleanup)
+        oci_version = read_chart_oci_version(chart)
+        if not dry_run and push_if_not_exists(oci_registry, oci_repo, oci_version):
+            click.echo(f"Pushed {oci_version} to OCI")
         return
 
     if dry_run:

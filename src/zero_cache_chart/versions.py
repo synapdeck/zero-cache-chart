@@ -16,8 +16,10 @@ def build_version_map(versions: list[Version]) -> dict[str, Version]:
     return vmap
 
 
-def get_latest_version(versions: list[Version]) -> Version | None:
-    return versions[-1] if versions else None
+def get_latest_stable(versions: list[Version]) -> Version | None:
+    """Return the latest stable (non-prerelease) version."""
+    stable = [v for v in versions if is_stable(v)]
+    return stable[-1] if stable else None
 
 
 def classify_version_tag(version: Version) -> tuple[str, str]:
