@@ -212,3 +212,59 @@ Rate limiting environment variables.
 - name: ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS
   value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"
 {{- end -}}
+
+{{/*
+Mutator/query API environment variables.
+Version-conditional: ZERO_PUSH_URL <0.24, ZERO_MUTATE_URL >=0.24.
+Query URL, API keys, and cookie forwarding only exist >=0.24.
+*/}}
+{{- define "zero-cache.env.mutators" -}}
+{{- $zv := include "zero-cache.zeroVersion" . -}}
+{{- if .Values.common.api.mutateUrl }}
+{{- if semverCompare ">=0.24.0" $zv }}
+- name: ZERO_MUTATE_URL
+  value: "{{ .Values.common.api.mutateUrl }}"
+{{- else }}
+- name: ZERO_PUSH_URL
+  value: "{{ .Values.common.api.mutateUrl }}"
+{{- end }}
+{{- end }}
+{{- if and (semverCompare ">=0.24.0" $zv) .Values.common.api.queryUrl }}
+- name: ZERO_QUERY_URL
+  value: "{{ .Values.common.api.queryUrl }}"
+{{- end }}
+{{- if semverCompare ">=0.24.0" $zv }}
+{{- if or .Values.common.api.mutateApiKey.value .Values.common.api.mutateApiKey.valueFrom }}
+- name: ZERO_MUTATE_API_KEY
+  {{- if .Values.common.api.mutateApiKey.value }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-api
+      key: mutate-api-key
+  {{- else }}
+  valueFrom:
+    {{ toYaml .Values.common.api.mutateApiKey.valueFrom | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- if or .Values.common.api.queryApiKey.value .Values.common.api.queryApiKey.valueFrom }}
+- name: ZERO_QUERY_API_KEY
+  {{- if .Values.common.api.queryApiKey.value }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zero-cache.fullname" . }}-api
+      key: query-api-key
+  {{- else }}
+  valueFrom:
+    {{ toYaml .Values.common.api.queryApiKey.valueFrom | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- if .Values.common.api.mutateForwardCookies }}
+- name: ZERO_MUTATE_FORWARD_COOKIES
+  value: "true"
+{{- end }}
+{{- if .Values.common.api.queryForwardCookies }}
+- name: ZERO_QUERY_FORWARD_COOKIES
+  value: "true"
+{{- end }}
+{{- end }}
+{{- end -}}
