@@ -69,186 +69,23 @@ spec:
             successThreshold: {{ .Values.singleNode.startupProbe.successThreshold }}
           {{- end }}
           env:
-            - name: ZERO_PORT
-              value: "{{ .Values.singleNode.service.port }}"
-            - name: ZERO_APP_ID
-              value: "{{ .Values.common.appId }}"
-            {{- if .Values.common.appPublications }}
-            - name: ZERO_APP_PUBLICATIONS
-              value: {{ .Values.common.appPublications | join "," | quote }}
-            {{- end }}
-            - name: ZERO_REPLICA_FILE
-              value: "{{ .Values.common.replicaFile }}"
-            - name: ZERO_AUTO_RESET
-              value: "{{ .Values.common.autoReset }}"
+            {{- include "zero-cache.env.core" (dict "port" .Values.singleNode.service.port "root" .) | nindent 12 }}
             - name: ZERO_CHANGE_STREAMER_MODE
               value: "dedicated"
-            {{- if or .Values.common.auth.secret.value .Values.common.auth.secret.valueFrom }}
-            - name: ZERO_AUTH_SECRET
-              {{- if .Values.common.auth.secret.value }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "zero-cache.fullname" . }}-auth
-                  key: auth-secret
-              {{- else }}
-              valueFrom:
-                {{ toYaml .Values.common.auth.secret.valueFrom | nindent 16 }}
-              {{- end }}
-            {{- end }}
-            {{- if or .Values.common.auth.jwk.value .Values.common.auth.jwk.valueFrom }}
-            - name: ZERO_AUTH_JWK
-              {{- if .Values.common.auth.jwk.value }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "zero-cache.fullname" . }}-auth
-                  key: auth-jwk
-              {{- else }}
-              valueFrom:
-                {{ toYaml .Values.common.auth.jwk.valueFrom | nindent 16 }}
-              {{- end }}
-            {{- end }}
-            {{- if or .Values.common.auth.jwksUrl.value .Values.common.auth.jwksUrl.valueFrom }}
-            - name: ZERO_AUTH_JWKS_URL
-              {{- if .Values.common.auth.jwksUrl.value }}
-              value: "{{ .Values.common.auth.jwksUrl.value }}"
-              {{- else }}
-              valueFrom:
-                {{ toYaml .Values.common.auth.jwksUrl.valueFrom | nindent 16 }}
-              {{- end }}
-            {{- end }}
-            {{- if .Values.common.adminPassword }}
-            - name: ZERO_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "zero-cache.fullname" . }}-admin
-                  key: admin-password
-            {{- end }}
-            - name: ZERO_UPSTREAM_DB
-              {{- if .Values.common.database.upstream.url.valueFrom }}
-              valueFrom:
-                {{ toYaml .Values.common.database.upstream.url.valueFrom | nindent 16 }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "zero-cache.fullname" . }}-db
-                  key: upstream-db
-              {{- end }}
-            - name: ZERO_UPSTREAM_MAX_CONNS
-              value: "{{ .Values.common.database.upstream.maxConns }}"
-            {{- if or .Values.common.database.cvr.url.value .Values.common.database.cvr.url.valueFrom }}
-            - name: ZERO_CVR_DB
-              {{- if .Values.common.database.cvr.url.valueFrom }}
-              valueFrom:
-                {{ toYaml .Values.common.database.cvr.url.valueFrom | nindent 16 }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "zero-cache.fullname" . }}-db
-                  key: cvr-db
-              {{- end }}
-            {{- end }}
-            - name: ZERO_CVR_MAX_CONNS
-              value: "{{ .Values.common.database.cvr.maxConns }}"
-            {{- if or .Values.common.database.change.url.value .Values.common.database.change.url.valueFrom }}
-            - name: ZERO_CHANGE_DB
-              {{- if .Values.common.database.change.url.valueFrom }}
-              valueFrom:
-                {{ toYaml .Values.common.database.change.url.valueFrom | nindent 16 }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "zero-cache.fullname" . }}-db
-                  key: change-db
-              {{- end }}
-            {{- end }}
-            - name: ZERO_CHANGE_MAX_CONNS
-              value: "{{ .Values.common.database.change.maxConns }}"
+            {{- include "zero-cache.env.auth" . | nindent 12 }}
+            {{- include "zero-cache.env.admin" . | nindent 12 }}
+            {{- include "zero-cache.env.database" . | nindent 12 }}
             {{- if .Values.common.litestream.backupUrl }}
             - name: ZERO_LITESTREAM_BACKUP_URL
               value: "{{ .Values.common.litestream.backupUrl }}"
-            - name: ZERO_LITESTREAM_CONFIG_PATH
-              value: "/etc/litestream/litestream.yml"
-            {{- if .Values.s3.enabled }}
-            {{- if or .Values.s3.accessKey.value .Values.s3.accessKey.valueFrom }}
-            - name: AWS_ACCESS_KEY_ID
-              {{- if .Values.s3.accessKey.value }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "zero-cache.fullname" . }}-s3
-                  key: access-key
-              {{- else }}
-              valueFrom:
-                {{ toYaml .Values.s3.accessKey.valueFrom | nindent 16 }}
-              {{- end }}
             {{- end }}
-            {{- if or .Values.s3.secretKey.value .Values.s3.secretKey.valueFrom }}
-            - name: AWS_SECRET_ACCESS_KEY
-              {{- if .Values.s3.secretKey.value }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "zero-cache.fullname" . }}-s3
-                  key: secret-key
-              {{- else }}
-              valueFrom:
-                {{ toYaml .Values.s3.secretKey.valueFrom | nindent 16 }}
-              {{- end }}
-            {{- end }}
-            - name: AWS_REGION
-              value: "{{ .Values.s3.region }}"
-            {{- if .Values.s3.endpoint }}
-            - name: AWS_ENDPOINT_URL
-              value: "{{ .Values.s3.endpoint }}"
-            {{- end }}
-            {{- end }}
-            - name: ZERO_LITESTREAM_CHECKPOINT_THRESHOLD_MB
-              value: "{{ .Values.common.litestream.checkpointThresholdMb }}"
-            - name: ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES
-              value: "{{ .Values.common.litestream.incrementalBackupIntervalMinutes }}"
-            - name: ZERO_LITESTREAM_SNAPSHOT_BACKUP_INTERVAL_HOURS
-              value: "{{ .Values.common.litestream.snapshotBackupIntervalHours }}"
-            - name: ZERO_LITESTREAM_RESTORE_PARALLELISM
-              value: "{{ .Values.common.litestream.restoreParallelism }}"
-            - name: ZERO_LITESTREAM_LOG_LEVEL
-              value: "{{ .Values.common.litestream.logLevel }}"
-            {{- end }}
-            {{- if .Values.common.performance.replicaVacuumIntervalHours }}
-            - name: ZERO_REPLICA_VACUUM_INTERVAL_HOURS
-              value: "{{ .Values.common.performance.replicaVacuumIntervalHours }}"
-            {{- end }}
-            - name: ZERO_INITIAL_SYNC_TABLE_COPY_WORKERS
-              value: "{{ .Values.common.performance.initialSyncTableCopyWorkers }}"
-            - name: ZERO_TARGET_CLIENT_ROW_COUNT
-              value: "{{ .Values.common.performance.targetClientRowCount }}"
-            - name: ZERO_LOG_FORMAT
-              value: "{{ .Values.common.logging.format }}"
-            - name: ZERO_LOG_LEVEL
-              value: "{{ .Values.common.logging.level }}"
-            - name: ZERO_LOG_SLOW_HYDRATE_THRESHOLD
-              value: "{{ .Values.common.logging.slowHydrateThreshold }}"
-            - name: ZERO_LOG_SLOW_ROW_THRESHOLD
-              value: "{{ .Values.common.logging.slowRowThreshold }}"
-            - name: ZERO_LOG_IVM_SAMPLING
-              value: "{{ .Values.common.logging.ivmSampling }}"
-            {{- if .Values.common.logging.otel.enable }}
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "{{ .Values.common.logging.otel.endpoint }}"
-            - name: OTEL_EXPORTER_OTLP_HEADERS
-              value: "{{ .Values.common.logging.otel.headers }}"
-            - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "{{ .Values.common.logging.otel.resourceAttributes }}"
-            - name: OTEL_NODE_RESOURCE_DETECTORS
-              value: "{{ .Values.common.logging.otel.nodeResourceDetectors }}"
-            {{- end }}
-            {{- if .Values.common.rateLimiting.perUserMutationLimitMax }}
-            - name: ZERO_PER_USER_MUTATION_LIMIT_MAX
-              value: "{{ .Values.common.rateLimiting.perUserMutationLimitMax }}"
-            {{- end }}
-            - name: ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS
-              value: "{{ .Values.common.rateLimiting.perUserMutationLimitWindowMs }}"
-            {{- if .Values.common.customMutators.pushUrl }}
-            - name: ZERO_PUSH_URL
-              value: "{{ .Values.common.customMutators.pushUrl }}"
-            {{- end }}
+            {{- include "zero-cache.env.litestream" . | nindent 12 }}
+            {{- include "zero-cache.env.s3" . | nindent 12 }}
+            {{- include "zero-cache.env.performance" . | nindent 12 }}
+            {{- include "zero-cache.env.logging" . | nindent 12 }}
+            {{- include "zero-cache.env.ratelimit" . | nindent 12 }}
+            {{- include "zero-cache.env.mutators" . | nindent 12 }}
+            {{- include "zero-cache.env.advanced" . | nindent 12 }}
           resources:
             {{- toYaml .Values.singleNode.resources | nindent 12 }}
           volumeMounts:
