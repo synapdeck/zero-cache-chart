@@ -16,6 +16,7 @@ def test_update_help():
     assert "--docker-image" in result.output
     assert "--oci-repo" in result.output
     assert "--dry-run" in result.output
+    assert "--branch-retention" not in result.output
 
 
 def test_prune_help():
@@ -25,6 +26,14 @@ def test_prune_help():
     assert "--oci-repo" in result.output
     assert "--max-age-days" in result.output
     assert "--all" in result.output
+
+
+def test_cleanup_all_help():
+    runner = CliRunner()
+    result = runner.invoke(main, ["cleanup-all", "--help"])
+    assert result.exit_code == 0
+    assert "--oci-repo" in result.output
+    assert "--dry-run" in result.output
 
 
 def test_update_requires_docker_image():
