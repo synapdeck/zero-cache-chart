@@ -65,18 +65,22 @@
 
           venv = pythonSet.mkVirtualEnv "zero-cache-chart-env" workspace.deps.default;
           devVenv = pythonSet.mkVirtualEnv "zero-cache-chart-dev-env" workspace.deps.all;
-        in
-        {
-          packages.default = (mkApplication {
+
+          unwrapped = mkApplication {
             venv = venv;
             package = pythonSet.zero-cache-chart;
-          }).overrideAttrs (prev: {
-            nativeBuildInputs = (prev.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
-            postFixup = (prev.postFixup or "") + ''
+          };
+        in
+        {
+          packages.default = pkgs.symlinkJoin {
+            name = "zero-cache-chart";
+            paths = [ unwrapped ];
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            postBuild = ''
               wrapProgram $out/bin/zero-cache-chart \
                 --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.kubernetes-helm pkgs.oras ]}
             '';
-          });
+          };
 
           devShells.default = pkgs.mkShell {
             packages = [
