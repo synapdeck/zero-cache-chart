@@ -24,23 +24,32 @@ def read_chart_oci_version(chart_path: Path) -> str:
     return str(data.get("version", "0.0.0"))
 
 
+def _is_breaking_upgrade(old: Version, new: Version) -> bool:
+    """Major bumps, or minor bumps before 1.0, are breaking."""
+    if new.major != old.major:
+        return True
+    return old.major == 0 and new.minor != old.minor
+
+
 def write_chart_version(chart_path: Path, version: Version) -> str | None:
-    """Update appVersion and bump chart patch. Returns new chart version, or None if unchanged."""
+    """Update appVersion and bump chart version. Returns new chart version, or None if unchanged."""
     text = chart_path.read_text()
     data = yaml.safe_load(text)
-    current_app = str(data.get("appVersion", ""))
+    current_app_str = str(data.get("appVersion", ""))
     new_app = str(version)
 
-    if current_app == new_app:
+    if current_app_str == new_app:
         return None
 
     data["appVersion"] = new_app
 
-    # Bump chart patch version independently
     chart_ver = data.get("version", "0.0.0")
     if Version.is_valid(str(chart_ver)):
         cv = Version.parse(str(chart_ver))
-        data["version"] = str(cv.bump_patch())
+        if Version.is_valid(current_app_str) and _is_breaking_upgrade(Version.parse(current_app_str), version):
+            data["version"] = str(cv.bump_major())
+        else:
+            data["version"] = str(cv.bump_patch())
     else:
         data["version"] = new_app
 
