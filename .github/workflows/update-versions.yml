@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-arm64-2x
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,7 +43,7 @@ jobs:
 
   prune:
     needs: update
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-arm64-2x
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@v3
