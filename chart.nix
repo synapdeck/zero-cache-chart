@@ -1,6 +1,6 @@
 {
   repo = "oci://ghcr.io/synapdeck/zero-cache-chart";
   chart = "zero-cache";
-  version = "1.0.3";
-  chartHash = "sha256-LRYKIRHI/aa9k1AYNXgzIo8R33H6E6EFpbXbBvxKNi0=";
+  version = "2.0.0";
+  chartHash = "sha256-kDJxx3HS1+VXOjzXDBmaNihwaRYQt71Gn4eTM+4hDE8=";
 }
