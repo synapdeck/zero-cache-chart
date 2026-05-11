@@ -5,12 +5,12 @@
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1772408722,
-        "narHash": "sha256-rHuJtdcOjK7rAHpHphUb1iCvgkU3GpfvicLMwwnfMT0=",
-        "rev": "f20dc5d9b8027381c474144ecabc9034d6a839a3",
-        "revCount": 445,
+        "lastModified": 1777988971,
+        "narHash": "sha256-qIoWPDs+0/8JecyYgE3gpKQxW/4bLW/gp45vow9ioCQ=",
+        "rev": "0678d8986be1661af6bb555f3489f2fdfc31f6ff",
+        "revCount": 473,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/hercules-ci/flake-parts/0.1.445%2Brev-f20dc5d9b8027381c474144ecabc9034d6a839a3/019cad18-ffd9-70a0-90f8-be89e5f67bbd/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/hercules-ci/flake-parts/0.1.473%2Brev-0678d8986be1661af6bb555f3489f2fdfc31f6ff/019df92c-77f8-7d51-8647-f0689ffcd417/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -19,12 +19,12 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1773389992,
-        "narHash": "sha256-wvfdLLWJ2I9oEpDd9PfMA8osfIZicoQ5MT1jIwNs9Tk=",
-        "rev": "c06b4ae3d6599a672a6210b7021d699c351eebda",
-        "revCount": 962836,
+        "lastModified": 1777954456,
+        "narHash": "sha256-hGdgeU2Nk87RAuZyYjyDjFL6LK7dAZN5RE9+hrDTkDU=",
+        "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+        "revCount": 992384,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.962836%2Brev-c06b4ae3d6599a672a6210b7021d699c351eebda/019cec4e-dd38-75a8-9d2d-0d91492115c9/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.992384%2Brev-549bd84d6279f9852cae6225e372cc67fb91a4c1/019df915-70b5-73a2-a5a4-63c620b45d9f/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -33,11 +33,11 @@
     },
     "nixpkgs-lib": {
       "locked": {
-        "lastModified": 1772328832,
-        "narHash": "sha256-e+/T/pmEkLP6BHhYjx6GmwP5ivonQQn0bJdH9YrRB+Q=",
+        "lastModified": 1777168982,
+        "narHash": "sha256-GOkGPcboWE9BmGCRMLX3worL4EMnsnG8MyKmXNeYuhQ=",
         "owner": "nix-community",
         "repo": "nixpkgs.lib",
-        "rev": "c185c7a5e5dd8f9add5b2f8ebeff00888b070742",
+        "rev": "f5901329dade4a6ea039af1433fb087bd9c1fe14",
         "type": "github"
       },
       "original": {
@@ -59,12 +59,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1772555609,
-        "narHash": "sha256-3BA3HnUvJSbHJAlJj6XSy0Jmu7RyP2gyB/0fL7XuEDo=",
-        "rev": "c37f66a953535c394244888598947679af231863",
-        "revCount": 67,
+        "lastModified": 1776659114,
+        "narHash": "sha256-qapCOQmR++yZSY43dzrp3wCrkOTLpod+ONtJWBk6iKU=",
+        "rev": "ffaa2161dd5d63e0e94591f86b54fc239660fb2e",
+        "revCount": 75,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/build-system-pkgs/0.1.67%2Brev-c37f66a953535c394244888598947679af231863/019cb4d1-3070-700e-bc58-1175165a0f2e/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/build-system-pkgs/0.1.75%2Brev-ffaa2161dd5d63e0e94591f86b54fc239660fb2e/019da98a-ad3b-7eb2-82e7-dc6f46d6a516/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -109,12 +109,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1771407777,
-        "narHash": "sha256-dAu/mZn4vHbkKaaq+pjLTF3AEfZybYofpDKP2qEi5fQ=",
-        "rev": "3eb70480bdae2382d61e94340975011f080c3f20",
-        "revCount": 420,
+        "lastModified": 1778320345,
+        "narHash": "sha256-HcdXw00vWUK/6Lnan6Sy21nfZb5664bSPAB6a/Dtsu8=",
+        "rev": "26e2f4debdf32960adf9c059dfadc14d7871ca79",
+        "revCount": 463,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/uv2nix/0.1.420%2Brev-3eb70480bdae2382d61e94340975011f080c3f20/019c71e0-3a46-7d78-b1fa-e2bb582b7da2/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/uv2nix/0.1.463%2Brev-26e2f4debdf32960adf9c059dfadc14d7871ca79/019e0ddc-2d9c-70b1-b1e4-e50c583479d2/source.tar.gz"
       },
       "original": {
         "type": "tarball",
