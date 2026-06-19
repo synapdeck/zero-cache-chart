@@ -364,6 +364,13 @@ Logging and telemetry environment variables.
 - name: ZERO_LOG_IVM_SAMPLING
   value: "{{ .Values.common.logging.ivmSampling }}"
 {{- if .Values.common.logging.otel.enable }}
+# Pod IP via the Downward API. Declared before OTEL_RESOURCE_ATTRIBUTES so a
+# value of "k8s.pod.ip=$(POD_IP)" resolves via Kubernetes env substitution,
+# letting a collector's k8sattributes processor associate by pod IP.
+- name: POD_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.podIP
 - name: OTEL_EXPORTER_OTLP_ENDPOINT
   value: "{{ .Values.common.logging.otel.endpoint }}"
 - name: OTEL_EXPORTER_OTLP_HEADERS

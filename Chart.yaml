@@ -17,4 +17,4 @@ sources:
 - https://github.com/rocicorp/zero
 - https://github.com/synapdeck/zero-cache-chart
 type: application
-version: 2.0.4
+version: 2.1.0
