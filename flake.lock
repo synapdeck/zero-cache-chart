@@ -19,12 +19,12 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1781577229,
-        "narHash": "sha256-lrp67w8AulE9Ks53n27I45ADSzbOCn4H+CNW1Ck8B+8=",
-        "rev": "567a49d1913ce81ac6e9582e3553dd90a955875f",
-        "revCount": 1017464,
+        "lastModified": 1782467914,
+        "narHash": "sha256-pGvFkM8N0xEkIIXDe5YYfbEAvHrk4IxBrjB/x8OomhE=",
+        "rev": "e73de5be04e0eff4190a1432b946d469c794e7b4",
+        "revCount": 1022855,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.1017464%2Brev-567a49d1913ce81ac6e9582e3553dd90a955875f/019ed27e-44b2-7462-b1ef-3564aa6c28ee/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.1022855%2Brev-e73de5be04e0eff4190a1432b946d469c794e7b4/019f040d-a4bb-76d0-b7be-7f591f783899/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -59,12 +59,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1781807804,
-        "narHash": "sha256-04KFQME8sE1LSywNiYS1B6Ucf5rEiUD7/vxwFMgooXU=",
-        "rev": "b84e03a7870c66033d309e0e00abd513e2299627",
-        "revCount": 77,
+        "lastModified": 1782093830,
+        "narHash": "sha256-6gmEVe69+KlRkZD4PEEV5xAlB9CB0Y9TiuEgQjDrKTQ=",
+        "rev": "430680a19bc85a3bda55f12e4cc1a1aadcf2e478",
+        "revCount": 78,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/build-system-pkgs/0.1.77%2Brev-b84e03a7870c66033d309e0e00abd513e2299627/019edebe-aff5-7b93-a4fb-cc203635ec75/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/build-system-pkgs/0.1.78%2Brev-430680a19bc85a3bda55f12e4cc1a1aadcf2e478/019eee33-8808-71f0-9ecd-c9f9b3bc8635/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -109,12 +109,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1781810314,
-        "narHash": "sha256-PQfvfKWaBvCysdHFUO5GewwvwIqI/WL6OcrJhDSUdbc=",
-        "rev": "14aa44100859a44144878fe079f8089d3fa4dc4e",
-        "revCount": 477,
+        "lastModified": 1782100052,
+        "narHash": "sha256-UfyLY3Hfwb3JqxCcj0953GxTFI5dEL85EKEe6DAFiVs=",
+        "rev": "920fc6dfaf9f10ec56de93b184055e1a9f380d5e",
+        "revCount": 478,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/uv2nix/0.1.477%2Brev-14aa44100859a44144878fe079f8089d3fa4dc4e/019edebe-f1cb-7b42-93e8-daf4dc0aa449/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/pyproject-nix/uv2nix/0.1.478%2Brev-920fc6dfaf9f10ec56de93b184055e1a9f380d5e/019eee33-b2b9-7190-b5d1-d30388e66239/source.tar.gz"
       },
       "original": {
         "type": "tarball",
