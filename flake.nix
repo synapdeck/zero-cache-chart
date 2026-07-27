@@ -4,29 +4,11 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
     flake-parts.url = "https://flakehub.com/f/hercules-ci/flake-parts/0.1";
-    pyproject-nix = {
-      url = "https://flakehub.com/f/pyproject-nix/pyproject.nix/0.1";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    uv2nix = {
-      url = "https://flakehub.com/f/pyproject-nix/uv2nix/0.1";
-      inputs.pyproject-nix.follows = "pyproject-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    pyproject-build-systems = {
-      url = "https://flakehub.com/f/pyproject-nix/build-system-pkgs/0.1";
-      inputs.pyproject-nix.follows = "pyproject-nix";
-      inputs.uv2nix.follows = "uv2nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = inputs @ {
     flake-parts,
     nixpkgs,
-    pyproject-nix,
-    uv2nix,
-    pyproject-build-systems,
     ...
   }:
     flake-parts.lib.mkFlake {inherit inputs;} {
@@ -48,68 +30,57 @@
       in
         helmFiles;
 
-      perSystem = {
-        pkgs,
-        system,
-        ...
-      }: let
-        workspace = uv2nix.lib.workspace.loadWorkspace {
-          workspaceRoot = ./.;
-        };
+      perSystem = {pkgs, ...}: let
+        python = pkgs.python3;
 
-        overlay = workspace.mkPyprojectOverlay {
-          sourcePreference = "wheel";
-        };
+        zero-cache-chart = python.pkgs.buildPythonApplication {
+          pname = "zero-cache-chart";
+          version = "0.0.0";
+          pyproject = true;
 
-        pythonSet =
-          (pkgs.callPackage pyproject-nix.build.packages {
-            python = pkgs.python3;
-          }).overrideScope (
-            nixpkgs.lib.composeManyExtensions [
-              pyproject-build-systems.overlays.default
-              overlay
-            ]
-          );
+          src = ./.;
 
-        inherit (pkgs.callPackages pyproject-nix.build.util {}) mkApplication;
+          build-system = [python.pkgs.hatchling];
 
-        venv = pythonSet.mkVirtualEnv "zero-cache-chart-env" workspace.deps.default;
-        devVenv = pythonSet.mkVirtualEnv "zero-cache-chart-dev-env" workspace.deps.all;
+          dependencies = with python.pkgs; [
+            click
+            pyyaml
+            requests
+            semver
+          ];
 
-        unwrapped = mkApplication {
-          venv = venv;
-          package = pythonSet.zero-cache-chart;
+          nativeCheckInputs =
+            [pkgs.git]
+            ++ (with python.pkgs; [
+              pytestCheckHook
+              pytest-mock
+              responses
+            ]);
+
+          makeWrapperArgs = [
+            "--prefix PATH : ${pkgs.lib.makeBinPath [pkgs.kubernetes-helm pkgs.oras]}"
+          ];
         };
       in {
-        packages.default = pkgs.symlinkJoin {
-          name = "zero-cache-chart";
-          paths = [unwrapped];
-          nativeBuildInputs = [pkgs.makeWrapper];
-          postBuild = ''
-            wrapProgram $out/bin/zero-cache-chart \
-              --prefix PATH : ${pkgs.lib.makeBinPath [pkgs.kubernetes-helm pkgs.oras]}
-          '';
-        };
+        packages.default = zero-cache-chart;
 
         devShells.default = pkgs.mkShell {
           packages = [
-            devVenv
+            (python.withPackages (ps:
+              with ps; [
+                click
+                pyyaml
+                requests
+                semver
+                pytest
+                pytest-mock
+                responses
+              ]))
             pkgs.kubernetes-helm
             pkgs.kubeconform
             pkgs.helm-docs
             pkgs.oras
-            pkgs.uv
           ];
-
-          env = {
-            UV_NO_SYNC = "1";
-            UV_PYTHON = pythonSet.python.interpreter;
-            UV_PYTHON_DOWNLOADS = "never";
-          };
-
-          shellHook = ''
-            unset PYTHONPATH
-          '';
         };
       };
     };

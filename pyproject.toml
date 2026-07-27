@@ -16,6 +16,9 @@ dev = [
     "responses>=0.25.0",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

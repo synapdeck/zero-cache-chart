@@ -81,7 +81,7 @@ The workflow runs hourly and can be manually triggered from the Actions tab. A `
 ### Setup
 
 ```bash
-# Enter the development shell (provides Python 3.13, helm, kubeconform, helm-docs, oras, uv)
+# Enter the development shell (provides Python 3.13, helm, kubeconform, helm-docs, oras)
 nix develop
 
 # Or with direnv

@@ -33,4 +33,4 @@ jobs:
               | kubeconform -strict -summary
           "
       - name: Run tests
-        run: nix develop --command uv run pytest -v
+        run: nix develop --command pytest -v
