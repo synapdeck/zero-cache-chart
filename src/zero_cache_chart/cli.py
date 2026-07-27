@@ -1,16 +1,51 @@
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 import click
 from semver.version import Version
 
-from zero_cache_chart.chart import read_chart_version, read_chart_oci_version, write_chart_version, sri_hash, write_chart_nix
+from zero_cache_chart.chart import (
+    read_chart_version,
+    read_chart_oci_version,
+    read_chart_nix_version,
+    write_chart_version,
+    sri_hash,
+    write_chart_nix,
+)
 from zero_cache_chart.docker import fetch_docker_versions
 from zero_cache_chart.git import Git
-from zero_cache_chart.oci import push_if_not_exists, prune_untagged, delete_all_versions
+from zero_cache_chart.oci import pull_chart, push_if_not_exists, prune_untagged, delete_all_versions
 from zero_cache_chart.types import VersionManagementResult
 from zero_cache_chart.versions import get_latest_stable
+
+
+def _reconcile_chart_nix(
+    nix_path: Path,
+    oci_registry: str,
+    oci_repo: str,
+    oci_version: str,
+    package_path: Path | None,
+) -> bool:
+    """Ensure chart.nix matches the published chart version.
+
+    Hashes the freshly packaged chart when one is available; otherwise, if
+    chart.nix is behind the published version, pulls the chart from the
+    registry to compute the hash. Returns True if chart.nix was rewritten.
+    """
+    if not nix_path.exists():
+        return False
+    if package_path is not None:
+        chart_hash = sri_hash(package_path)
+    else:
+        if read_chart_nix_version(nix_path) == oci_version:
+            return False
+        with tempfile.TemporaryDirectory() as tmp:
+            pulled = pull_chart(oci_registry, oci_repo, oci_version, Path(tmp))
+            chart_hash = sri_hash(pulled)
+    write_chart_nix(nix_path, oci_version, chart_hash)
+    return True
 
 
 def _split_oci_repo(oci_repo: str) -> tuple[str, str]:
@@ -66,14 +101,13 @@ def update(
             package_path = push_if_not_exists(oci_registry, oci_repo, oci_version)
             if package_path:
                 click.echo(f"Pushed {oci_version} to OCI")
-                nix_path = chart.parent / "chart.nix"
-                if nix_path.exists():
-                    chart_hash = sri_hash(package_path)
-                    write_chart_nix(nix_path, oci_version, chart_hash)
-                    git.add(str(nix_path))
-                    git.commit(f"chore(chart): update chart.nix hash for {oci_version}")
-                    git.push("main")
-                    click.echo(f"Updated chart.nix (hash: {chart_hash[:20]}...)")
+            nix_path = chart.parent / "chart.nix"
+            if _reconcile_chart_nix(nix_path, oci_registry, oci_repo, oci_version, package_path):
+                git.add(str(nix_path))
+                git.commit(f"chore(chart): update chart.nix hash for {oci_version}")
+                git.push("main")
+                click.echo(f"Updated chart.nix for {oci_version}")
+            if package_path:
                 package_path.unlink(missing_ok=True)
         return
 
@@ -92,21 +126,18 @@ def update(
     if package_path:
         result.pushed_oci_packages.append(oci_version)
         click.echo(f"Pushed {oci_version} to OCI")
-
-        # 5. Update chart.nix with version and hash from packaged chart
-        nix_path = chart.parent / "chart.nix"
-        if nix_path.exists():
-            chart_hash = sri_hash(package_path)
-            write_chart_nix(nix_path, oci_version, chart_hash)
-            click.echo(f"Updated chart.nix (hash: {chart_hash[:20]}...)")
-
-        package_path.unlink(missing_ok=True)
     else:
         click.echo(f"OCI package {oci_version} already exists")
 
+    # 5. Update chart.nix with version and hash of the published chart
+    nix_path = chart.parent / "chart.nix"
+    if _reconcile_chart_nix(nix_path, oci_registry, oci_repo, oci_version, package_path):
+        click.echo(f"Updated chart.nix for {oci_version}")
+    if package_path:
+        package_path.unlink(missing_ok=True)
+
     # 6. Commit and push
     git.add(chart_path)
-    nix_path = chart.parent / "chart.nix"
     if nix_path.exists():
         git.add(str(nix_path))
     git.commit(f"chore(chart): update appVersion to {latest}")

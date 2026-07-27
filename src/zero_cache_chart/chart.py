@@ -75,6 +75,12 @@ def sri_hash(tgz_path: Path) -> str:
         return result.stdout.strip()
 
 
+def read_chart_nix_version(nix_path: Path) -> str | None:
+    """Read the version field from chart.nix."""
+    match = re.search(r'version\s*=\s*"([^"]*)"', nix_path.read_text())
+    return match.group(1) if match else None
+
+
 def write_chart_nix(nix_path: Path, version: str, chart_hash: str) -> None:
     """Update version and chartHash in chart.nix."""
     text = nix_path.read_text()

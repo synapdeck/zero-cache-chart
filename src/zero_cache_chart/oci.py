@@ -56,6 +56,17 @@ def push_if_not_exists(
     return package_path
 
 
+def pull_chart(registry: str, repo: str, version: str, dest_dir: Path) -> Path:
+    """Pull a published chart from the OCI registry. Returns the tarball path."""
+    run([
+        "helm", "pull",
+        f"oci://{registry}/{repo}/zero-cache",
+        "--version", version,
+        "--destination", str(dest_dir),
+    ])
+    return dest_dir / f"zero-cache-{version}.tgz"
+
+
 def _parse_package_versions(
     versions: list[PackageVersion],
 ) -> tuple[list[PackageVersion], list[PackageVersion]]:

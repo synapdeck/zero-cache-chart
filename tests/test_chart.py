@@ -2,7 +2,13 @@ from pathlib import Path
 
 import yaml
 from semver.version import Version
-from zero_cache_chart.chart import read_chart_version, read_chart_oci_version, write_chart_version, _is_breaking_upgrade
+from zero_cache_chart.chart import (
+    read_chart_version,
+    read_chart_oci_version,
+    read_chart_nix_version,
+    write_chart_version,
+    _is_breaking_upgrade,
+)
 
 
 def test_read_chart_version(tmp_path: Path):
@@ -89,3 +95,15 @@ def test_read_chart_oci_version(tmp_path: Path):
     chart = tmp_path / "Chart.yaml"
     chart.write_text("apiVersion: v2\nappVersion: 0.26.0\nversion: 1.0.5\nname: zero-cache\n")
     assert read_chart_oci_version(chart) == "1.0.5"
+
+
+def test_read_chart_nix_version(tmp_path: Path):
+    nix = tmp_path / "chart.nix"
+    nix.write_text('{\n  version = "2.1.1";\n  chartHash = "sha256-abc";\n}\n')
+    assert read_chart_nix_version(nix) == "2.1.1"
+
+
+def test_read_chart_nix_version_missing_field(tmp_path: Path):
+    nix = tmp_path / "chart.nix"
+    nix.write_text('{\n  chartHash = "sha256-abc";\n}\n')
+    assert read_chart_nix_version(nix) is None
