@@ -57,6 +57,44 @@ See [`values.yaml`](values.yaml) for all configurable values with documentation.
 | `s3.enabled` | Enable S3-backed Litestream replication | `false` |
 | `viewSyncer.replicas` | Number of view syncer replicas | `2` |
 | `viewSyncer.autoscaling.enabled` | Enable HPA for view syncers | `false` |
+| `common.extraEnv` / `extraEnvFrom` | Escape hatch for unmodelled env vars | `[]` |
+
+### Extra Environment Variables
+
+`extraEnv` and `extraEnvFrom` exist for environment variables this chart does
+not model, so a consumer is not blocked on a chart release. They are an escape
+hatch, not the preferred way to configure zero-cache: anything with real
+semantics — a flag, a URL, a tuning knob — should get a typed value, so
+consumers get validation and a default instead of a bag of strings.
+
+`common.extraEnv` applies to every component. Each component
+(`singleNode`, `replicationManager`, `viewSyncer`) also takes its own
+`extraEnv`, appended after the common entries.
+
+```yaml
+common:
+  extraEnv:
+    - name: MY_FLAG
+      value: "1"          # EnvVar.value must be a string — quote numbers
+viewSyncer:
+  extraEnv:
+    - name: MY_SECRET
+      valueFrom:
+        secretKeyRef: {name: my-secret, key: token}
+  extraEnvFrom:
+    - configMapRef: {name: my-config}
+```
+
+Semantics:
+
+- Entries are appended **after** the chart's own variables, so repeating a name
+  the chart already sets overrides it — Kubernetes takes the last entry for a
+  duplicate name. This is supported, not merely tolerated.
+- They apply to the **zero-cache container only**. Init containers are a
+  separate concern and are left untouched.
+- Omitted or empty renders exactly as before, so it is a safe no-op on upgrade.
+- Entries are passed through verbatim as Kubernetes `EnvVar` / `EnvFromSource`
+  objects and are not validated by the chart.
 
 ## Automated Version Management
 

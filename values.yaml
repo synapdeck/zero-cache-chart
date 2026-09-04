@@ -230,6 +230,30 @@ common:
     # WebSocket compression options (JSON string)
     websocketCompressionOptions: ""
 
+  # Escape hatch for environment variables this chart does not model, applied
+  # to the zero-cache container of every component. Entries are appended after
+  # the chart's own variables, so a duplicate name overrides the chart's value.
+  # Anything with real semantics deserves a typed value instead, so consumers
+  # get validation and a default rather than a bag of strings.
+  # Each entry is a Kubernetes EnvVar.
+  extraEnv: []
+  # - name: MY_FLAG
+  #   value: "1"
+  # - name: MY_SECRET
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: my-secret
+  #       key: token
+
+  # Bulk-inject variables from ConfigMaps/Secrets into every component's
+  # zero-cache container. Each entry is a Kubernetes EnvFromSource. Values in
+  # `env` (chart-set or from extraEnv) take precedence over these.
+  extraEnvFrom: []
+  # - configMapRef:
+  #     name: my-config
+  # - secretRef:
+  #     name: my-secret
+
 ## Single Node Configuration
 ## This is a simplified deployment option for development or small deployments
 singleNode:
@@ -282,6 +306,14 @@ singleNode:
     failureThreshold: 30
     successThreshold: 1
 
+  # Extra environment variables for this component's zero-cache container only,
+  # appended after `common.extraEnv`. See `common.extraEnv` for semantics.
+  extraEnv: []
+
+  # Extra envFrom sources for this component's zero-cache container only,
+  # appended after `common.extraEnvFrom`.
+  extraEnvFrom: []
+
 ## Replication Manager Configuration
 replicationManager:
   # Resource requests and limits
@@ -329,6 +361,14 @@ replicationManager:
     timeoutSeconds: 5
     failureThreshold: 30
     successThreshold: 1
+
+  # Extra environment variables for this component's zero-cache container only,
+  # appended after `common.extraEnv`. See `common.extraEnv` for semantics.
+  extraEnv: []
+
+  # Extra envFrom sources for this component's zero-cache container only,
+  # appended after `common.extraEnvFrom`.
+  extraEnvFrom: []
 
 ## View Syncer Configuration
 viewSyncer:
@@ -417,6 +457,14 @@ viewSyncer:
     timeoutSeconds: 5
     failureThreshold: 30
     successThreshold: 1
+
+  # Extra environment variables for this component's zero-cache container only,
+  # appended after `common.extraEnv`. See `common.extraEnv` for semantics.
+  extraEnv: []
+
+  # Extra envFrom sources for this component's zero-cache container only,
+  # appended after `common.extraEnvFrom`.
+  extraEnvFrom: []
 
 ## S3-compatible Storage Configuration
 s3:

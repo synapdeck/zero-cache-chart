@@ -419,3 +419,27 @@ Advanced/optional environment variables.
 {{- end }}
 {{- end }}
 {{- end -}}
+
+{{/*
+Escape-hatch environment variables for a component's zero-cache container.
+Emitted after every chart-modelled variable, so a name repeated here overrides
+the chart's value under Kubernetes' last-one-wins rule for a container's env.
+
+Call with (dict "component" .Values.<component> "root" .)
+*/}}
+{{- define "zero-cache.env.extra" -}}
+{{- with concat (.root.Values.common.extraEnv | default list) (.component.extraEnv | default list) }}
+{{- toYaml . }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Escape-hatch envFrom sources for a component's zero-cache container.
+
+Call with (dict "component" .Values.<component> "root" .)
+*/}}
+{{- define "zero-cache.envFrom.extra" -}}
+{{- with concat (.root.Values.common.extraEnvFrom | default list) (.component.extraEnvFrom | default list) }}
+{{- toYaml . }}
+{{- end }}
+{{- end -}}
