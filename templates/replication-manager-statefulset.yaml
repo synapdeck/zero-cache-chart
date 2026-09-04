@@ -86,6 +86,13 @@ spec:
             {{- include "zero-cache.env.ratelimit" . | nindent 12 }}
             {{- include "zero-cache.env.mutators" . | nindent 12 }}
             {{- include "zero-cache.env.advanced" . | nindent 12 }}
+            {{- with include "zero-cache.env.extra" (dict "component" .Values.replicationManager "root" .) }}
+            {{- . | nindent 12 }}
+            {{- end }}
+          {{- with include "zero-cache.envFrom.extra" (dict "component" .Values.replicationManager "root" .) }}
+          envFrom:
+            {{- . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.replicationManager.resources | nindent 12 }}
           volumeMounts:
