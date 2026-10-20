@@ -50,7 +50,7 @@
           ];
 
           nativeCheckInputs =
-            [pkgs.git]
+            [pkgs.git pkgs.kubernetes-helm]
             ++ (with python.pkgs; [
               pytestCheckHook
               pytest-mock
