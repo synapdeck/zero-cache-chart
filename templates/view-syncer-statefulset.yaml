@@ -95,6 +95,8 @@ spec:
           {{- end }}
           env:
             {{- include "zero-cache.env.core" (dict "port" .Values.viewSyncer.service.port "root" .) | nindent 12 }}
+            - name: ZERO_SELF_DRAIN_DELAY_MS
+              value: "{{ .Values.viewSyncer.selfDrainDelayMs }}"
             - name: ZERO_CHANGE_STREAMER_URI
               value: "ws://{{ include "zero-cache.fullname" . }}-replication-manager.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.replicationManager.service.port }}/"
             {{- include "zero-cache.env.auth" . | nindent 12 }}

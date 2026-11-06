@@ -27,7 +27,7 @@ A single Deployment running both the change streamer and view syncer. Suitable f
 
 ### Multi-Node Mode (default)
 
-- **Replication Manager** — a single-replica StatefulSet that streams changes from Postgres
+- **Replication Manager** — a single-replica Deployment that surges during a rollout, so the new pod takes over before the old one stops, and streams changes from Postgres
 - **View Syncers** — a horizontally scalable StatefulSet that serves client queries (supports HPA)
 
 View syncers wait for the replication manager to be healthy before starting.

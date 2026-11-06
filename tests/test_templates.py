@@ -13,7 +13,7 @@ UPSTREAM_URL = "common.database.upstream.url.value=postgres://t:t@h/d"
 # own extraEnv/extraEnvFrom.
 COMPONENTS = [
     ("Deployment", "zero-cache", "singleNode", ["--set", "singleNode.enabled=true"]),
-    ("StatefulSet", "zero-cache-replication-manager", "replicationManager", []),
+    ("Deployment", "zero-cache-replication-manager", "replicationManager", []),
     ("StatefulSet", "zero-cache-view-syncer", "viewSyncer", []),
 ]
 
@@ -119,7 +119,7 @@ def test_extra_env_is_scoped_to_its_own_component():
         "--set", "viewSyncer.extraEnv[0].value=v1",
     )
     vs = main_container(rendered, "StatefulSet", "zero-cache-view-syncer")
-    rm = main_container(rendered, "StatefulSet", "zero-cache-replication-manager")
+    rm = main_container(rendered, "Deployment", "zero-cache-replication-manager")
     assert "VS_ONLY" in [e["name"] for e in vs["env"]]
     assert "VS_ONLY" not in [e["name"] for e in rm["env"]]
 
@@ -147,9 +147,12 @@ def test_view_syncer_connects_by_uri_in_the_release_namespace():
     assert env_value(container, "ZERO_CHANGE_STREAMER_MODE") is None
 
 
-@pytest.mark.parametrize("name", ["zero-cache-replication-manager", "zero-cache-view-syncer"])
-def test_multi_node_pods_drain_for_longer_than_the_kubernetes_default(name):
-    spec = workload(render(), "StatefulSet", name)["spec"]["template"]["spec"]
+@pytest.mark.parametrize(
+    ("kind", "name"),
+    [("Deployment", "zero-cache-replication-manager"), ("StatefulSet", "zero-cache-view-syncer")],
+)
+def test_multi_node_pods_drain_for_longer_than_the_kubernetes_default(kind, name):
+    spec = workload(render(), kind, name)["spec"]["template"]["spec"]
     assert spec["terminationGracePeriodSeconds"] == 600
 
 
@@ -163,7 +166,30 @@ def test_view_syncer_delays_shutdown_and_can_opt_out():
 
 
 def test_litestream_region_is_set_only_when_configured():
-    assert env_value(main_container(render(), "StatefulSet", "zero-cache-replication-manager"), "ZERO_LITESTREAM_REGION") is None
+    assert env_value(main_container(render(), "Deployment", "zero-cache-replication-manager"), "ZERO_LITESTREAM_REGION") is None
     rendered = render("--set", "common.litestream.region=us-east-2")
-    container = main_container(rendered, "StatefulSet", "zero-cache-replication-manager")
+    container = main_container(rendered, "Deployment", "zero-cache-replication-manager")
     assert env_value(container, "ZERO_LITESTREAM_REGION") == "us-east-2"
+
+
+def test_replication_manager_replacement_starts_before_the_old_pod_stops():
+    strategy = workload(render(), "Deployment", "zero-cache-replication-manager")["spec"]["strategy"]
+    assert strategy["rollingUpdate"] == {"maxSurge": 1, "maxUnavailable": 0}
+
+
+def data_volume(*args: str) -> dict:
+    spec = workload(render(*args), "Deployment", "zero-cache-replication-manager")["spec"]["template"]["spec"]
+    return next(v for v in spec["volumes"] if v["name"] == "data")
+
+
+def test_replication_manager_volume_belongs_to_the_pod():
+    claim = data_volume()["ephemeral"]["volumeClaimTemplate"]["spec"]
+    assert claim["resources"]["requests"]["storage"] == "10Gi"
+    assert "emptyDir" in data_volume("--set", "replicationManager.persistence.enabled=false")
+
+
+def test_view_syncer_self_drain_outlasts_liveness_failure_and_prestop():
+    container = main_container(render(), "StatefulSet", "zero-cache-view-syncer")
+    probe = container["livenessProbe"]
+    detection_seconds = probe["periodSeconds"] * probe.get("failureThreshold", 3)
+    assert int(env_value(container, "ZERO_SELF_DRAIN_DELAY_MS")) > (detection_seconds + 10) * 1000
