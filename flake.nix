@@ -58,7 +58,10 @@
             ]);
 
           makeWrapperArgs = [
-            "--prefix PATH : ${pkgs.lib.makeBinPath [pkgs.kubernetes-helm pkgs.oras]}"
+            "--prefix"
+            "PATH"
+            ":"
+            "${pkgs.lib.makeBinPath [pkgs.kubernetes-helm pkgs.oras]}"
           ];
         };
       in {
