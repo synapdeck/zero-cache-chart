@@ -157,7 +157,7 @@ spec:
     - metadata:
         name: data
         labels:
-          {{- include "zero-cache.labels" . | nindent 10 }}
+          {{- include "zero-cache.selectorLabels" . | nindent 10 }}
           app.kubernetes.io/component: view-syncer
         {{- with .Values.viewSyncer.persistence.annotations }}
         annotations:

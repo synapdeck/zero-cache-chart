@@ -193,3 +193,14 @@ def test_view_syncer_self_drain_outlasts_liveness_failure_and_prestop():
     probe = container["livenessProbe"]
     detection_seconds = probe["periodSeconds"] * probe.get("failureThreshold", 3)
     assert int(env_value(container, "ZERO_SELF_DRAIN_DELAY_MS")) > (detection_seconds + 10) * 1000
+
+
+def test_view_syncer_volume_claim_labels_ignore_release_versions():
+    # volumeClaimTemplates is immutable, so a label that moves with a release
+    # makes every upgrade of the StatefulSet fail.
+    rendered = render()
+    statefulset = workload(rendered, "StatefulSet", "zero-cache-view-syncer")
+    labels = statefulset["spec"]["volumeClaimTemplates"][0]["metadata"]["labels"]
+    assert "helm.sh/chart" not in labels
+    assert "app.kubernetes.io/version" not in labels
+    assert labels["app.kubernetes.io/component"] == "view-syncer"
