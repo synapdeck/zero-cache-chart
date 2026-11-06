@@ -381,6 +381,10 @@ viewSyncer:
   terminationGracePeriodSeconds: 600
   # Delay before shutdown, so load balancers stop sending new connections first
   preStopSleepSeconds: 10
+  # How long a view syncer restarting itself to restore a new replica waits for
+  # Kubernetes to stop it. Must exceed the liveness probe's failure time (30s)
+  # plus preStopSleepSeconds.
+  selfDrainDelayMs: 45000
 
   # Number of replicas (horizontally scalable)
   # Set this to at least 2 for high availability

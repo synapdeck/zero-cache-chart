@@ -1,15 +1,21 @@
 {{- if not .Values.singleNode.enabled }}
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ include "zero-cache.fullname" . }}-replication-manager
   labels:
     {{- include "zero-cache.labels" . | nindent 4 }}
     app.kubernetes.io/component: replication-manager
 spec:
-  serviceName: {{ include "zero-cache.fullname" . }}-replication-manager-headless
   replicas: 1
-  podManagementPolicy: Parallel
+  # A new manager has to come up beside the old one, which then drains its
+  # subscribers across. Stopping the old one first leaves a gap in which backups
+  # can purge the change log past the view syncers, forcing them all to restart.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       {{- include "zero-cache.selectorLabels" . | nindent 6 }}
@@ -110,6 +116,32 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        - name: data
+          {{- if .Values.replicationManager.persistence.enabled }}
+          # Per pod, so old and new managers can run together; a new one restores
+          # from the backup.
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                labels:
+                  {{- include "zero-cache.labels" . | nindent 18 }}
+                  app.kubernetes.io/component: replication-manager
+                {{- with .Values.replicationManager.persistence.annotations }}
+                annotations:
+                  {{- toYaml . | nindent 18 }}
+                {{- end }}
+              spec:
+                accessModes:
+                  - {{ .Values.replicationManager.persistence.accessMode }}
+                {{- if .Values.replicationManager.persistence.storageClass }}
+                storageClassName: {{ .Values.replicationManager.persistence.storageClass }}
+                {{- end }}
+                resources:
+                  requests:
+                    storage: {{ .Values.replicationManager.persistence.size }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
         {{- if or .Values.s3.enabled .Values.common.litestream.backupUrl }}
         - name: litestream-config
           configMap:
@@ -125,25 +157,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  {{- if .Values.replicationManager.persistence.enabled }}
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-        labels:
-          {{- include "zero-cache.labels" . | nindent 10 }}
-          app.kubernetes.io/component: replication-manager
-        {{- with .Values.replicationManager.persistence.annotations }}
-        annotations:
-          {{- toYaml . | nindent 10 }}
-        {{- end }}
-      spec:
-        accessModes:
-          - {{ .Values.replicationManager.persistence.accessMode }}
-        {{- if .Values.replicationManager.persistence.storageClass }}
-        storageClassName: {{ .Values.replicationManager.persistence.storageClass }}
-        {{- end }}
-        resources:
-          requests:
-            storage: {{ .Values.replicationManager.persistence.size }}
-  {{- end }}
 {{- end }}
