@@ -28,7 +28,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "zero-cache.serviceAccountName" . }}
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: {{ .Values.viewSyncer.terminationGracePeriodSeconds }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | default dict | nindent 8 }}
       initContainers:
@@ -57,6 +57,12 @@ spec:
             {{- toYaml .Values.securityContext | default dict | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.viewSyncer.preStopSleepSeconds }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep {{ .Values.viewSyncer.preStopSleepSeconds }}"]
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.viewSyncer.service.port }}
@@ -89,8 +95,8 @@ spec:
           {{- end }}
           env:
             {{- include "zero-cache.env.core" (dict "port" .Values.viewSyncer.service.port "root" .) | nindent 12 }}
-            - name: ZERO_CHANGE_STREAMER_MODE
-              value: "discover"
+            - name: ZERO_CHANGE_STREAMER_URI
+              value: "ws://{{ include "zero-cache.fullname" . }}-replication-manager.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.replicationManager.service.port }}/"
             {{- include "zero-cache.env.auth" . | nindent 12 }}
             {{- include "zero-cache.env.admin" . | nindent 12 }}
             {{- include "zero-cache.env.database" . | nindent 12 }}

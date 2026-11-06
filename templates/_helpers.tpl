@@ -283,6 +283,10 @@ Does NOT include ZERO_LITESTREAM_BACKUP_URL (workload-specific).
 - name: ZERO_LITESTREAM_CONFIG_PATH
   value: "/etc/litestream/litestream.yml"
 {{- end }}
+{{- if .Values.common.litestream.region }}
+- name: ZERO_LITESTREAM_REGION
+  value: "{{ .Values.common.litestream.region }}"
+{{- end }}
 - name: ZERO_LITESTREAM_CHECKPOINT_THRESHOLD_MB
   value: "{{ .Values.common.litestream.checkpointThresholdMb }}"
 - name: ZERO_LITESTREAM_INCREMENTAL_BACKUP_INTERVAL_MINUTES

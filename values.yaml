@@ -137,6 +137,8 @@ common:
   litestream:
     # S3-compatible backup URL (e.g., s3://bucket-name/backup)
     backupUrl: ""
+    # Region of the backup bucket. Empty leaves Litestream to detect it.
+    region: ""
     # Size threshold for checkpointing (MB)
     checkpointThresholdMb: 40
     # Interval between incremental backups (minutes)
@@ -316,6 +318,9 @@ singleNode:
 
 ## Replication Manager Configuration
 replicationManager:
+  # Time to finish a backup and hand off the change stream on shutdown
+  terminationGracePeriodSeconds: 600
+
   # Resource requests and limits
   resources:
     requests:
@@ -372,6 +377,11 @@ replicationManager:
 
 ## View Syncer Configuration
 viewSyncer:
+  # Time for connected clients to drain on shutdown
+  terminationGracePeriodSeconds: 600
+  # Delay before shutdown, so load balancers stop sending new connections first
+  preStopSleepSeconds: 10
+
   # Number of replicas (horizontally scalable)
   # Set this to at least 2 for high availability
   # Note: If autoscaling.enabled=true, this becomes the initial number of replicas
