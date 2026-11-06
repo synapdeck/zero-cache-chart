@@ -133,3 +133,37 @@ def test_extra_env_skips_init_containers():
     pod = workload(rendered, "StatefulSet", "zero-cache-view-syncer")["spec"]["template"]["spec"]
     for init in pod.get("initContainers", []):
         assert "COMMON_ONE" not in [e["name"] for e in init.get("env", [])]
+
+
+def env_value(container: dict, name: str) -> str | None:
+    return next((e.get("value") for e in container["env"] if e["name"] == name), None)
+
+
+def test_view_syncer_connects_by_uri_in_the_release_namespace():
+    container = main_container(render("--namespace", "app"), "StatefulSet", "zero-cache-view-syncer")
+    assert env_value(container, "ZERO_CHANGE_STREAMER_URI") == (
+        "ws://z-zero-cache-replication-manager.app.svc.cluster.local:4849/"
+    )
+    assert env_value(container, "ZERO_CHANGE_STREAMER_MODE") is None
+
+
+@pytest.mark.parametrize("name", ["zero-cache-replication-manager", "zero-cache-view-syncer"])
+def test_multi_node_pods_drain_for_longer_than_the_kubernetes_default(name):
+    spec = workload(render(), "StatefulSet", name)["spec"]["template"]["spec"]
+    assert spec["terminationGracePeriodSeconds"] == 600
+
+
+def test_view_syncer_delays_shutdown_and_can_opt_out():
+    delayed = main_container(render(), "StatefulSet", "zero-cache-view-syncer")
+    assert delayed["lifecycle"]["preStop"]["exec"]["command"] == ["sh", "-c", "sleep 10"]
+    immediate = main_container(
+        render("--set", "viewSyncer.preStopSleepSeconds=0"), "StatefulSet", "zero-cache-view-syncer"
+    )
+    assert "lifecycle" not in immediate
+
+
+def test_litestream_region_is_set_only_when_configured():
+    assert env_value(main_container(render(), "StatefulSet", "zero-cache-replication-manager"), "ZERO_LITESTREAM_REGION") is None
+    rendered = render("--set", "common.litestream.region=us-east-2")
+    container = main_container(rendered, "StatefulSet", "zero-cache-replication-manager")
+    assert env_value(container, "ZERO_LITESTREAM_REGION") == "us-east-2"
